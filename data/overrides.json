@@ -1,0 +1,9 @@
+{
+ "_doc": "Manual corrections applied last by scraper/aggregate.py. merge_athletes: [[keep_id, drop_id], ...]. athletes: {id: {country|gender|name|instagram: value}}.",
+ "merge_athletes": [],
+ "athletes": {
+  "cardy-remy": {
+   "name": "Remy Cardy"
+  }
+ }
+}

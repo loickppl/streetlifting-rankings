@@ -452,9 +452,28 @@ def main():
             if len(tok) >= 4:
                 buckets.setdefault(tok, []).append(aid)
     redirect = {}
-    n_perfs = {}
+    n_perfs, latest_by_aid, classes_pre, events_pre = {}, {}, {}, {}
     for row in performances:
-        n_perfs[row["athlete_id"]] = n_perfs.get(row["athlete_id"], 0) + 1
+        aid = row["athlete_id"]
+        n_perfs[aid] = n_perfs.get(aid, 0) + 1
+        if row.get("date"):
+            latest_by_aid[aid] = max(latest_by_aid.get(aid, ""), row["date"])
+        if row.get("class"):
+            classes_pre.setdefault(aid, set()).add(row["class"])
+        if row.get("competition") and row.get("date"):
+            events_pre.setdefault(aid, set()).add((row["competition"], row["date"][:7]))
+
+    def same_person_despite_country(a, b):
+        """Identical name (token set), same gender, overlapping weight classes
+        and never seen in the same event: one person registered twice with an
+        inconsistent country on the source side."""
+        if name_tokens(a.get("name")) != name_tokens(b.get("name")):
+            return False
+        ca, cb = classes_pre.get(a["id"], set()), classes_pre.get(b["id"], set())
+        if not (ca & cb):
+            return False
+        return not (events_pre.get(a["id"], set()) & events_pre.get(b["id"], set()))
+
     for aids in buckets.values():
         for i in range(len(aids)):
             for j in range(i + 1, len(aids)):
@@ -463,11 +482,17 @@ def main():
                     continue
                 if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
                     continue
-                if a.get("country") and b.get("country") and a["country"] != b["country"]:
+                country_conflict = (a.get("country") and b.get("country")
+                                    and a["country"] != b["country"])
+                if country_conflict and not same_person_despite_country(a, b):
                     continue
                 if not names_fuzzy_equal(a.get("name"), b.get("name")):
                     continue
                 keep, drop = (a, b) if n_perfs.get(a["id"], 0) >= n_perfs.get(b["id"], 0) else (b, a)
+                if country_conflict:
+                    # trust the profile with the most recent activity
+                    if latest_by_aid.get(drop["id"], "") > latest_by_aid.get(keep["id"], ""):
+                        keep["country"] = drop["country"]
                 for field in ("country", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
@@ -660,6 +685,33 @@ def main():
     performances = deduped
     if dropped:
         print(f"dropped {dropped} near-duplicate rows (same total within 10 days)")
+
+    # ── manual overrides (data/overrides.json) — the human wins ──
+    overrides = json.loads((ROOT / "data" / "overrides.json").read_text(encoding="utf-8")) \
+        if (ROOT / "data" / "overrides.json").exists() else {}
+    ov_redirect = {}
+    for keep_id, drop_id in overrides.get("merge_athletes", []):
+        if keep_id in athlete_meta and drop_id in athlete_meta:
+            ov_redirect[drop_id] = keep_id
+            for field in ("country", "gender", "instagram", "profile_url"):
+                if not athlete_meta[keep_id].get(field) and athlete_meta[drop_id].get(field):
+                    athlete_meta[keep_id][field] = athlete_meta[drop_id][field]
+            del athlete_meta[drop_id]
+    if ov_redirect:
+        for row in performances:
+            if row["athlete_id"] in ov_redirect:
+                row["athlete_id"] = ov_redirect[row["athlete_id"]]
+                row["athlete"] = athlete_meta[row["athlete_id"]]["name"]
+    for aid, fields in overrides.get("athletes", {}).items():
+        if aid in athlete_meta:
+            athlete_meta[aid].update(fields)
+            for row in performances:
+                if row["athlete_id"] == aid:
+                    for f in ("country", "gender"):
+                        if f in fields:
+                            row[f] = fields[f]
+                    if "name" in fields:
+                        row["athlete"] = fields["name"]
 
     # ── athlete records built from the merged rows ──
     by_athlete = {}
