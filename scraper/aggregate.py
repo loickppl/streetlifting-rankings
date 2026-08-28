@@ -315,6 +315,23 @@ def main():
     if dropped:
         print(f"dropped {dropped} near-duplicate rows (same total within 2 days)")
 
+    # Compute placements for rows that lack one (OSL-only competitions):
+    # rank within (competition, gender, weight class) by total, lighter
+    # bodyweight breaking ties — the standard streetlifting rule.
+    comp_groups = {}
+    for row in performances:
+        if row.get("total") and row.get("competition") and row.get("gender"):
+            comp_groups.setdefault(
+                (row["competition"], row["gender"], row.get("class")), []).append(row)
+    computed_places = 0
+    for rows in comp_groups.values():
+        rows.sort(key=lambda r: (-(r["total"] or 0), r.get("bodyweight") or float("inf")))
+        for i, r in enumerate(rows, 1):
+            if not r.get("place"):
+                r["place"] = i
+                computed_places += 1
+    print(f"computed {computed_places} missing placements")
+
     # ── athlete records built from the merged rows ──
     by_athlete = {}
     for row in performances:
