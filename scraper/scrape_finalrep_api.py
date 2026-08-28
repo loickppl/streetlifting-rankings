@@ -227,33 +227,56 @@ def list_events(client, continents=None):
     return list(events.values())
 
 
-def event_groups(client, eid):
-    """Weight classes with their starter athlete ids."""
-    resp = client.get(f"/events-api/v1/events/{eid}/groups")
-    emb = client.embedded(resp) or {}
-    return emb.get("groups", []) if isinstance(emb, dict) else []
+def event_statistics(client, eid):
+    """Full results of one event in a single call:
+    /events-api/v1/events/{id}/statistics returns every group (weight class)
+    with athlete_stats: user profile, place, total, official RIS, and every
+    attempt per movement (weight, attempt number, success)."""
+    return client.embedded(client.get(f"/events-api/v1/events/{eid}/statistics"))
 
 
-def athlete_history(client, eid, uid):
-    """Detailed attempts for one athlete in one event."""
-    resp = client.get(f"/events-api/v1/events/{eid}/attempts/{uid}/history")
-    return client.embedded(resp)
-
-
-def user_profile(client, uid, cache):
-    if uid in cache:
-        return cache[uid]
-    resp = client.get(f"/users-api/v1/users/{uid}")
-    emb = client.embedded(resp) or {}
-    prof = {
-        "id": uid,
-        "name": emb.get("name") or " ".join(filter(None, [emb.get("first_name"), emb.get("last_name")])) or None,
-        "country": emb.get("country") or emb.get("nationality"),
-        "handle": emb.get("username") or emb.get("handle"),
-    }
-    cache[uid] = prof
-    time.sleep(DELAY)
-    return prof
+def parse_statistics(stats, ev):
+    """Condense a statistics payload into per-athlete result rows."""
+    results = []
+    for gs in stats.get("group_stats", []):
+        group = gs.get("group") or {}
+        weight_class = group.get("name")
+        for ast in gs.get("athlete_stats", []):
+            user = ast.get("user") or {}
+            attempts = []
+            for raw_name, tries in (ast.get("attempts") or {}).items():
+                movement = norm_movement(raw_name) or raw_name
+                for t in tries or []:
+                    attempts.append({
+                        "movement": movement,
+                        "attempt": t.get("attempt"),
+                        "weight": t.get("weight"),
+                        "success": t.get("success"),
+                    })
+            best = {}
+            for a in attempts:
+                if a["success"] and isinstance(a["weight"], (int, float)):
+                    m = a["movement"]
+                    if a["weight"] > best.get(m, 0):
+                        best[m] = a["weight"]
+            results.append({
+                "event_id": ev["id"], "event": ev["name"], "event_type": ev["type"],
+                "date": (ast.get("date") or ev.get("start_date") or "")[:10] or None,
+                "affiliated": ev.get("affiliated"),
+                "weight_class": weight_class,
+                "athlete_id": user.get("id"),
+                "athlete": user.get("name"),
+                "country": (user.get("country") or "").upper() or None,
+                "gender": (user.get("gender") or "").lower() or None,
+                "instagram": user.get("tag"),
+                "place": ast.get("place"),
+                "total": ast.get("total"),
+                "ris": round(ast["ris"], 2) if isinstance(ast.get("ris"), (int, float)) else None,
+                "disqualified": ast.get("disqualified"),
+                "best": best,
+                "attempts": attempts,
+            })
+    return results
 
 
 def main():
@@ -275,29 +298,22 @@ def main():
         print(f"Wrote {OUT_PATH} (events only)")
         return
 
+    # only finished events carry results
+    finished = [e for e in events if e.get("finished")]
     if args.limit_events:
-        events = events[: args.limit_events]
+        finished = finished[: args.limit_events]
 
-    user_cache = {}
     records = []
-    for i, ev in enumerate(events, 1):
-        eid = ev["id"]
-        groups = event_groups(client, eid)
-        for g in groups:
-            weight_class = g.get("name")
-            for uid in g.get("starters", []):
-                hist = athlete_history(client, eid, uid)
-                prof = user_profile(client, uid, user_cache)
-                records.append({
-                    "event_id": eid, "event": ev["name"], "date": ev["start_date"],
-                    "event_type": ev["type"], "affiliated": ev["affiliated"],
-                    "weight_class": weight_class,
-                    "athlete_id": uid, "athlete": prof["name"], "country": prof["country"],
-                    "handle": prof["handle"],
-                    "attempts": hist,
-                })
-                time.sleep(DELAY)
-        print(f"  [{i}/{len(events)}] {ev['name']}: {sum(len(g.get('starters', [])) for g in groups)} athletes")
+    for i, ev in enumerate(finished, 1):
+        stats = event_statistics(client, ev["id"])
+        if not stats:
+            print(f"  [{i}/{len(finished)}] {ev['name']}: no statistics")
+            time.sleep(DELAY)
+            continue
+        rows = parse_statistics(stats, ev)
+        records.extend(rows)
+        print(f"  [{i}/{len(finished)}] {ev['name']}: {len(rows)} athlete results")
+        time.sleep(DELAY)
 
     OUT_PATH.write_text(json.dumps({
         "source": "api.final-rep.com",
