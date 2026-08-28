@@ -210,7 +210,8 @@ def parse_athlete_page(html, slug):
 
         perf = parse_result_row(cells, cols)
         perf["competition"] = clean(cells[comp_i]) if comp_i is not None and comp_i < len(cells) else None
-        if has_lift(perf):
+        # 4-movement 1RM competitions only (drop 1/2/3-lift formats)
+        if perf.get("style") == "All4" and has_lift(perf):
             athlete["performances"].append(perf)
 
     if athlete["name"] is None:
@@ -290,7 +291,7 @@ def parse_competition_page(html):
         m = re.search(r'href="/athletes/([^"?#]+)"', row)
         flag = FLAG_RE.search(clean(cells[0]))
         perf = parse_result_row(cells, cols)
-        if not has_lift(perf):
+        if perf.get("style") != "All4" or not has_lift(perf):
             continue
         results.append({
             "athlete_slug": m.group(1) if m else None,
@@ -317,7 +318,7 @@ def save_athletes(athletes_by_id):
         "athletes": sorted(athletes_by_id.values(), key=lambda a: a["id"]),
     }
     ATHLETES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ATHLETES_PATH.write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    ATHLETES_PATH.write_text(json.dumps(out, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     n = sum(len(a["performances"]) for a in athletes_by_id.values())
     print(f"Wrote {ATHLETES_PATH} ({len(athletes_by_id)} athletes, {n} performances)")
 

@@ -245,14 +245,12 @@ def list_events(client, continents=None):
     return list(events.values())
 
 
-# 1RM streetlifting event types queried in the ranking sweep
-STREETLIFTING_TYPES = ["Calisthenics ONERM", "Calisthenics ONERM Classic",
-                       "Calisthenics ONERM 3L"]
-# 1RM types accepted from an event's /statistics payload (max-rep excluded)
-STREETLIFTING_STAT_TYPES = {
-    "Calisthenics ONERM", "Calisthenics ONERM Classic", "Calisthenics ONERM 3L",
-    "FinalRep Underground", "FinalRep Underground Classic", "FinalRep Underground 3L",
-}
+# We keep ONLY 4-movement 1RM streetlifting (MU + PU + Dip + Squat):
+#   Calisthenics ONERM   = official "Streetlifting 4 Lift"
+#   FinalRep Underground = same 4-lift format, underground series
+# Reduced formats (Classic 2-lift, 3L) and max-rep (LOR/AMRAP) are excluded.
+STREETLIFTING_TYPES = ["Calisthenics ONERM"]          # ranking sweep
+STREETLIFTING_STAT_TYPES = {"Calisthenics ONERM", "FinalRep Underground"}
 
 
 def ranking_event_ids(client):
@@ -351,12 +349,15 @@ def main():
     if args.list_only:
         OUT_PATH.write_text(json.dumps(
             {"source": "api.final-rep.com", "scraped_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-             "events": events, "results": []}, ensure_ascii=False, indent=1), encoding="utf-8")
+             "events": events, "results": []}, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
         print(f"Wrote {OUT_PATH} (events only)")
         return
 
-    # only finished events carry results
-    finished = [e for e in events if e.get("finished")]
+    # only finished events carry results; skip events whose type is already
+    # known to not be 4-lift 1RM (no API call wasted on them)
+    finished = [e for e in events
+                if e.get("finished")
+                and (e.get("type") is None or e["type"] in STREETLIFTING_STAT_TYPES)]
     if args.limit_events:
         finished = finished[: args.limit_events]
 
@@ -382,12 +383,14 @@ def main():
         time.sleep(DELAY)
     print(f"Skipped {skipped_maxrep} non-1RM (max-rep) events")
 
+    kept_events = [e for e in events
+                   if e.get("type") is None or e["type"] in STREETLIFTING_STAT_TYPES]
     OUT_PATH.write_text(json.dumps({
         "source": "api.final-rep.com",
         "scraped_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-        "events": events,
+        "events": kept_events,
         "results": records,
-    }, ensure_ascii=False, indent=1), encoding="utf-8")
+    }, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"Wrote {OUT_PATH} ({len(records)} athlete-results across {len(events)} events)")
 
 

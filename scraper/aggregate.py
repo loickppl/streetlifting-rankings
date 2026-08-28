@@ -58,14 +58,10 @@ def norm_name(name):
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
-# Final Rep event types that are 1RM streetlifting, mapped to a style label
+# Final Rep event types kept: 4-movement 1RM streetlifting only
 FR_STYLES = {
     "Calisthenics ONERM": "All4",
-    "Calisthenics ONERM Classic": "Classic",
-    "Calisthenics ONERM 3L": "3 Lift",
-    "FinalRep Underground": "Underground",
-    "FinalRep Underground Classic": "Underground",
-    "FinalRep Underground 3L": "Underground",
+    "FinalRep Underground": "All4 (Underground)",
 }
 FR_CLASS_RE = re.compile(r"^(Male|Female|Men|Women)\s*([+\-]\d+(?:\.\d+)?kg)?", re.I)
 
@@ -100,6 +96,8 @@ def main():
         }
         seen = set()
         for p in a.get("performances", []):
+            if p.get("style") != "All4":   # 4-movement 1RM competitions only
+                continue
             key = tuple(sorted(p.items()))
             if key in seen:      # exact duplicate rows (source glitches)
                 continue
