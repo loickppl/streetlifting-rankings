@@ -527,3 +527,6 @@ button { font-family: inherit; }
 
 /* disqualified result */
 .place-chip.dq { color: var(--accent); border-color: var(--accent); }
+
+/* estimated total (sum of all-time PRs) — visually secondary to the real total */
+.best-chip.est .v { color: var(--ink-2); }

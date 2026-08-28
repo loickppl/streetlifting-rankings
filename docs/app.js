@@ -24,6 +24,7 @@ const I18N = {
     results: "résultats", no_data: "Aucun résultat",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Historique des compétitions", view_profile: "Profil OSL ↗",
+    est_total: "Total estimé", est_total_tip: "Somme des 4 records all-time (jamais réalisé en une seule compétition)", total_tip: "Meilleur total réalisé en compétition",
     attempts_hint: "voir les tentatives",
     competitions_word: "compétitions",
     footer_src: `Sources : <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS : <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
@@ -51,6 +52,7 @@ const I18N = {
     results: "results", no_data: "No results",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Competition history", view_profile: "OSL profile ↗",
+    est_total: "Est. total", est_total_tip: "Sum of the 4 all-time PRs (never lifted in a single meet)", total_tip: "Best total achieved in competition",
     attempts_hint: "view attempts",
     competitions_word: "competitions",
     footer_src: `Sources: <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS: <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
@@ -391,8 +393,15 @@ function openAthlete(id) {
     </div>
     <div class="athlete-body">
       <div class="bests">
-        ${["muscle_up", "pull_up", "dip", "squat", "total"].map(m => `
+        ${["muscle_up", "pull_up", "dip", "squat"].map(m => `
           <div class="best-chip"><div class="v">${fmt(a.best?.[m])}</div><div class="l">${mn[m]}</div></div>`).join("")}
+        ${(() => {
+          const prs = ["muscle_up", "pull_up", "dip", "squat"].map(m => a.best?.[m]).filter(v => v != null);
+          if (!prs.length) return "";
+          const sum = prs.reduce((x, y) => x + y, 0);
+          return `<div class="best-chip est" title="${t().est_total_tip}"><div class="v">Σ\u2009${fmt(sum)}</div><div class="l">${t().est_total}</div></div>`;
+        })()}
+        <div class="best-chip" title="${t().total_tip}"><div class="v">${fmt(a.best?.total)}</div><div class="l">${mn.total}</div></div>
         <div class="best-chip"><div class="v">${a.best_ris_est ? "~\u2009" : ""}${fmt(a.best_ris)}</div><div class="l">RIS</div></div>
       </div>
       <h3>${t().history}</h3>
