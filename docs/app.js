@@ -343,7 +343,7 @@ function renderRecords() {
           return `<div class="record-row">
             <span class="record-move">${mn[m]}</span>
             <span class="record-holder"><span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${flagEmoji(r.country)} ${esc(r.athlete)}</span></span>
-            <span class="record-value">${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
+            <span class="record-value">${r.class_inferred ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
           </div>`;
         }).join(""))
     ).join("") || `<p class="empty-row">${t().no_data}</p>`;

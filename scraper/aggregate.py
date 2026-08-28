@@ -430,7 +430,7 @@ def main():
             value = p.get(movement)
             if not value:
                 continue
-            for klass in (None if p.get("class_inferred") else p["class"], "all"):
+            for klass in (p["class"], "all"):
                 if not klass:
                     continue
                 key = (p["gender"], klass, movement)
@@ -440,6 +440,7 @@ def main():
                         "value": value, "athlete": p["athlete"], "athlete_id": p["athlete_id"],
                         "country": p["country"], "competition": p["competition"],
                         "date": p["date"], "bodyweight": p["bodyweight"],
+                        "class_inferred": True if (klass != "all" and p.get("class_inferred")) else None,
                     }
 
     records = {
