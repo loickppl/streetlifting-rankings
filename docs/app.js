@@ -23,7 +23,7 @@ const I18N = {
     col_ncomp: "Compét.", col_best_ris: "RIS max",
     results: "résultats", no_data: "Aucun résultat",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
-    history: "Historique des compétitions", view_profile: "Profil OSL ↗",
+    history: "Historique des compétitions",
     est_total: "Total estimé", est_total_tip: "Somme des 4 records all-time (jamais réalisé en une seule compétition)", total_tip: "Meilleur total réalisé en compétition",
     attempts_hint: "voir les tentatives",
     competitions_word: "compétitions",
@@ -51,7 +51,7 @@ const I18N = {
     col_ncomp: "Comps", col_best_ris: "Best RIS",
     results: "results", no_data: "No results",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
-    history: "Competition history", view_profile: "OSL profile ↗",
+    history: "Competition history",
     est_total: "Est. total", est_total_tip: "Sum of the 4 all-time PRs (never lifted in a single meet)", total_tip: "Best total achieved in competition",
     attempts_hint: "view attempts",
     competitions_word: "competitions",
@@ -385,7 +385,6 @@ function openAthlete(id) {
 
   const links = [];
   if (a.instagram) links.push(`<a href="https://instagram.com/${esc(a.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(a.instagram)}</a>`);
-  if (a.profile_url) links.push(`<a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a>`);
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
       <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
