@@ -325,6 +325,11 @@ def main():
 
             # new performance (event not covered by OSL)
             aid = find_athlete_id(r.get("athlete"))
+            # a name alone is not an identity when genders conflict
+            # (two anonymous athletes can share the same display name)
+            if (aid is not None and gender and athlete_meta[aid].get("gender")
+                    and athlete_meta[aid]["gender"] != gender):
+                aid = None
             if aid is None:
                 aid = f"fr-{r['athlete_id']}"
                 if aid not in athlete_meta:
@@ -364,6 +369,44 @@ def main():
             fr_new += 1
         print(f"finalrep api: {fr_new} new performances, {fr_dupes} merged into OSL rows")
 
+
+    # OSL marks some female athletes as male (source-side profile errors).
+    # Two corrections, applied conservatively:
+    #  1. the official Final Rep records list knows its holders' gender —
+    #     trust it on name match;
+    #  2. a "male" athlete whose every performance sits in classes that are
+    #     both women-ladder classes AND below the smallest men's class
+    #     (-52/-57/-63 < -66) is a woman.
+    official_gender = {}
+    for r in (finalrep["records"] if finalrep else []):
+        official_gender[norm_name(r["athlete"])] = r["gender"]
+    classes_by_aid = {}
+    for row in performances:
+        if row.get("class"):
+            classes_by_aid.setdefault(row["athlete_id"], set()).add(row["class"])
+    WOMEN_LADDER = {"-52kg", "-57kg", "-63kg", "-70kg", "+70kg"}
+    totals_by_aid = {}
+    for row in performances:
+        if row.get("total"):
+            totals_by_aid[row["athlete_id"]] = max(totals_by_aid.get(row["athlete_id"], 0), row["total"])
+    flipped = 0
+    for aid, m in athlete_meta.items():
+        target = None
+        for on, og in official_gender.items():
+            if names_compatible(m.get("name"), on) and og != m.get("gender"):
+                target = og
+                break
+        cls = classes_by_aid.get(aid)
+        # every class in the women's ladder AND a total no credible ranked male
+        # posts in those classes -> misgendered profile
+        if (target is None and m.get("gender") == "male" and cls
+                and cls <= WOMEN_LADDER and totals_by_aid.get(aid, 0) <= 345):
+            target = "female"
+        if target and m.get("gender") != target:
+            m["gender"] = target
+            flipped += 1
+    if flipped:
+        print(f"corrected gender for {flipped} athletes (source profile errors)")
 
     # Re-sync row identity from the consolidated athlete record (gender may
     # have been corrected by Final Rep group data, names/countries backfilled)
@@ -420,6 +463,24 @@ def main():
                     return True
         return False
 
+    classes_of = {}
+    for row in performances:
+        if row.get("class"):
+            classes_of.setdefault(row["athlete_id"], set()).add(row["class"])
+
+    def strong_identity(a, b):
+        """Subset names ('Sarah Anyamele' ⊂ 'Sarah Chimdi Anyamele') back up
+        by same known country, same known gender and overlapping weight
+        classes — enough to identify one person across profiles."""
+        if name_tokens(a.get("name")) == name_tokens(b.get("name")):
+            return False   # identical names handled elsewhere
+        if not (a.get("country") and a.get("country") == b.get("country")):
+            return False
+        if not (a.get("gender") and a.get("gender") == b.get("gender")):
+            return False
+        ca, cb = classes_of.get(a["id"], set()), classes_of.get(b["id"], set())
+        return bool(ca & cb)
+
     for aids in buckets.values():
         for i in range(len(aids)):
             for j in range(i + 1, len(aids)):
@@ -433,7 +494,7 @@ def main():
                     continue
                 if not names_compatible(a.get("name"), b.get("name")):
                     continue
-                if not shared_performance(ai, bj):
+                if not (shared_performance(ai, bj) or strong_identity(a, b)):
                     continue
                 keep, drop = (a, b) if n_perfs.get(ai, 0) >= n_perfs.get(bj, 0) else (b, a)
                 if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
@@ -574,12 +635,31 @@ def main():
                         "class_inferred": True if (klass != "all" and p.get("class_inferred")) else None,
                     }
 
+    # ── unified records: one list, best mark whatever the source ──
+    # Candidates: the record computed from the consolidated database, and the
+    # official list published on final-rep.com (curated, sometimes older than
+    # our data, sometimes covering events we don't have).
+    unified = dict(computed)   # (gender, class, movement) -> record
+    for r in (finalrep["records"] if finalrep else []):
+        key = (r["gender"], r["class"], r["movement"])
+        cur = unified.get(key)
+        if cur is None or r["weight_kg"] > cur["value"]:
+            unified[key] = {
+                "gender": r["gender"], "class": r["class"], "movement": r["movement"],
+                "value": r["weight_kg"], "athlete": r["athlete"], "athlete_id": None,
+                "country": None, "competition": None, "date": None, "bodyweight": None,
+                "instagram": r.get("instagram"),
+            }
+    # attach instagram from the athlete DB when known
+    ig_by_name = {norm_name(m["name"]): m.get("instagram")
+                  for m in athlete_meta.values() if m.get("name")}
+    for rec in unified.values():
+        if not rec.get("instagram"):
+            rec["instagram"] = ig_by_name.get(norm_name(rec.get("athlete")))
+
     records = {
-        "finalrep": finalrep["records"] if finalrep else [],
-        "computed_osl": sorted(
-            computed.values(),
-            key=lambda r: (r["gender"], r["class"], r["movement"]),
-        ),
+        "unified": sorted(unified.values(),
+                          key=lambda r: (r["gender"], r["class"], r["movement"])),
     }
 
     meta = {
@@ -592,7 +672,7 @@ def main():
             },
             "finalrep": {
                 "scraped_at": finalrep.get("scraped_at") if finalrep else None,
-                "records": len(records["finalrep"]),
+                "records": len(finalrep["records"]) if finalrep else 0,
             },
             "finalrep_api": {
                 "scraped_at": fr_api.get("scraped_at") if fr_api else None,
@@ -618,7 +698,7 @@ def main():
     print("mirrored to docs/data/streetlifting.json")
 
     print(f"{len(athletes)} athletes, {len(performances)} performances, "
-          f"{len(records['finalrep'])} finalrep records, {len(records['computed_osl'])} computed records")
+          f"{len(records['unified'])} unified records")
 
 
 if __name__ == "__main__":

@@ -64,7 +64,7 @@ const state = {
   lang: "fr",
   performances: [],
   athletes: [],
-  records: { finalrep: [], computed_osl: [] },
+  records: { unified: [] },
   meta: null,
   // rankings filters
   gender: "male",
@@ -72,7 +72,6 @@ const state = {
   klass: "",
   // records filters
   rGender: "male",
-  rSource: "finalrep",
   // athletes filters
   aGender: "",
   sort: { key: "total", dir: -1 },
@@ -305,49 +304,30 @@ function renderRankings() {
 function renderRecords() {
   const grid = $("#records-grid");
   const mn = t().metric_names;
-  const gender = state.rGender;
+  const recs = (state.records.unified || []).filter(r => r.gender === state.rGender);
+  const byClass = {};
+  recs.forEach(r => (byClass[r.class] ??= []).push(r));
 
-  const card = (title, tag, rowsHtml) => `
+  grid.innerHTML = Object.keys(byClass).sort(classSort).map(c => `
     <div class="record-card">
-      <div class="record-card-head"><h3>${title}</h3><span class="tag">${tag}</span></div>
-      <div class="record-rows">${rowsHtml}</div>
-    </div>`;
-
-  if (state.rSource === "finalrep") {
-    const recs = state.records.finalrep.filter(r => r.gender === gender);
-    const byClass = {};
-    recs.forEach(r => (byClass[r.class] ??= []).push(r));
-    grid.innerHTML = Object.keys(byClass).sort(classSort).map(c =>
-      card(esc(c), "WR",
-        ["total", "muscle_up", "pull_up", "dip", "squat"].map(m => {
+      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">WR</span></div>
+      <div class="record-rows">
+        ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
           const r = byClass[c].find(x => x.movement === m);
           if (!r) return "";
+          const holder = r.athlete_id
+            ? `<span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${esc(r.athlete)}</span>`
+            : esc(r.athlete);
           const ig = r.instagram
-            ? `<a class="ig" href="https://instagram.com/${esc(r.instagram.slice(1))}" target="_blank" rel="noopener">${esc(r.instagram)}</a>` : "";
+            ? ` <a class="ig" href="https://instagram.com/${esc(r.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(r.instagram)}</a>` : "";
           return `<div class="record-row">
             <span class="record-move">${mn[m]}</span>
-            <span class="record-holder">${esc(r.athlete)}${ig}</span>
-            <span class="record-value">${fmt(r.weight_kg)}<small>kg</small></span>
-          </div>`;
-        }).join(""))
-    ).join("") || `<p class="empty-row">${t().no_data}</p>`;
-  } else {
-    const recs = state.records.computed_osl.filter(r => r.gender === gender);
-    const byClass = {};
-    recs.forEach(r => (byClass[r.class] ??= []).push(r));
-    grid.innerHTML = Object.keys(byClass).sort(classSort).map(c =>
-      card(c === "all" ? t().all_classes : esc(c), "OSL",
-        ["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
-          const r = byClass[c].find(x => x.movement === m);
-          if (!r) return "";
-          return `<div class="record-row">
-            <span class="record-move">${mn[m]}</span>
-            <span class="record-holder"><span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${flagEmoji(r.country)} ${esc(r.athlete)}</span></span>
+            <span class="record-holder">${holder}${ig}</span>
             <span class="record-value">${r.class_inferred ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
           </div>`;
-        }).join(""))
-    ).join("") || `<p class="empty-row">${t().no_data}</p>`;
-  }
+        }).join("")}
+      </div>
+    </div>`).join("") || `<p class="empty-row">${t().no_data}</p>`;
 }
 
 /* ── athletes ─────────────────────────────────────────────── */
@@ -514,7 +494,6 @@ function bind() {
   $("#f-search").addEventListener("input", renderRankings);
 
   segBind("#r-gender", (v) => { state.rGender = v; renderRecords(); });
-  segBind("#r-source", (v) => { state.rSource = v; renderRecords(); });
 
   segBind("#a-gender", (v) => { state.aGender = v; renderAthletes(); });
   $("#a-search").addEventListener("input", renderAthletes);
