@@ -318,11 +318,9 @@ function renderRecords() {
           const holder = r.athlete_id
             ? `<span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${esc(r.athlete)}</span>`
             : esc(r.athlete);
-          const ig = r.instagram
-            ? ` <a class="ig" href="https://instagram.com/${esc(r.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(r.instagram)}</a>` : "";
           return `<div class="record-row">
             <span class="record-move">${mn[m]}</span>
-            <span class="record-holder">${holder}${ig}</span>
+            <span class="record-holder">${flagEmoji(r.country)}${holder}</span>
             <span class="record-value">${r.class_inferred ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
           </div>`;
         }).join("")}
