@@ -404,7 +404,9 @@ function openAthlete(id) {
       </tr></thead><tbody>
         ${perfs.map((p, i) => {
           const hasAtt = Array.isArray(p.attempts) && p.attempts.length > 0;
-          const place = p.place ? `<span class="place-chip">#${p.place}${p.place_by_ris ? '<small class="ris-tag">RIS</small>' : ""}</span> ` : "";
+          const place = p.disqualified
+            ? `<span class="place-chip dq">DQ</span> `
+            : p.place ? `<span class="place-chip">#${p.place}${p.place_by_ris ? '<small class="ris-tag">RIS</small>' : ""}</span> ` : "";
           const main = `<tr class="${hasAtt ? "has-attempts" : ""}" ${hasAtt ? `data-attempts="${i}"` : ""}>
             <td class="id-cell">
               <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>

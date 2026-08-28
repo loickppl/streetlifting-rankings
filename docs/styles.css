@@ -524,3 +524,6 @@ button { font-family: inherit; }
 
 /* multiple nationalities: flags side by side */
 .flag { gap: 4px; }
+
+/* disqualified result */
+.place-chip.dq { color: var(--accent); border-color: var(--accent); }

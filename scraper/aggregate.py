@@ -241,11 +241,12 @@ def main():
                 "gender": gender,
                 "class": p.get("class"),
                 "bodyweight": p.get("bodyweight"),
-                # All4: every lift is contested — a missing value is a scored 0
-                "muscle_up": p.get("muscle_up") if p.get("muscle_up") is not None else 0.0,
-                "pull_up": p.get("pull_up") if p.get("pull_up") is not None else 0.0,
-                "dip": p.get("dip") if p.get("dip") is not None else 0.0,
-                "squat": p.get("squat") if p.get("squat") is not None else 0.0,
+                # All4: every lift is contested. With a total, a 0 is a
+                # validated bodyweight-only lift; without a total, a 0 is a
+                # bombed lift (all attempts failed) -> no value.
+                **{mv: ((p.get(mv) if p.get(mv) is not None else 0.0)
+                        if p.get("total") else (p.get(mv) or None))
+                   for mv in ("muscle_up", "pull_up", "dip", "squat")},
                 "total": p.get("total"),
                 "ris": ris if ris is not None else (p.get("ris_site") or None),
                 "ris_site": p.get("ris_site"),
@@ -261,20 +262,31 @@ def main():
     if fr_api:
         by_key = {}
         by_date_total = {}
+        by_name_date = {}
         for row in performances:
             if row["total"] and row["date"]:
                 by_key[(norm_name(row["athlete"]), row["date"], round(row["total"], 2))] = row
                 by_date_total.setdefault((row["date"], round(row["total"], 2)), []).append(row)
+            if row["date"]:
+                by_name_date.setdefault((norm_name(row["athlete"]), row["date"]), []).append(row)
         name_to_id = {norm_name(m["name"]): aid for aid, m in athlete_meta.items() if m["name"]}
 
         def find_match(r):
             """Same performance across sources: same total and compatible
             athlete name, within +/-2 days (multi-day competitions are dated
             differently by each source)."""
-            if not (r.get("date") and r.get("total")):
+            if not r.get("date"):
                 return None
-            total = round(r["total"], 2)
             nm = norm_name(r.get("athlete"))
+            if not r.get("total"):
+                # disqualified/bombed: no total on either side — match by
+                # athlete name and date alone (unique candidate required)
+                cands = []
+                for delta in (0, -1, 1, -2, 2):
+                    d = shift_date(r["date"], delta)
+                    cands += [x for x in by_name_date.get((nm, d), []) if not x.get("total")]
+                return cands[0] if len(cands) == 1 else None
+            total = round(r["total"], 2)
             for delta in (0, -1, 1, -2, 2):
                 d = shift_date(r["date"], delta)
                 if not d:
@@ -299,8 +311,9 @@ def main():
             return cands.pop() if len(cands) == 1 else None
 
         for r in fr_api.get("results", []):
-            if r.get("event_type") not in FR_TYPES or r.get("disqualified") or not r.get("best"):
-                continue  # not 4-lift 1RM streetlifting, or no valid lift
+            if r.get("event_type") not in FR_TYPES:
+                continue  # not 4-lift 1RM streetlifting
+            dq = bool(r.get("disqualified")) or not r.get("total")
             gender, klass = parse_fr_group(r.get("weight_class"))
             # rebuild best from the attempt log: a successful 0 kg attempt is a
             # validated bodyweight-only lift, not a missing value
@@ -310,11 +323,14 @@ def main():
                     mv = att["movement"]
                     if mv not in best or att["weight"] > best[mv]:
                         best[mv] = att["weight"]
+            if dq and not (r.get("attempts") or r.get("best")):
+                continue   # nothing usable at all
             extras = {
-                "place": r.get("place"),
-                "place_by_ris": True if (r.get("place") and r.get("ranked_by_ris")) else None,
+                "place": None if dq else r.get("place"),
+                "disqualified": True if dq else None,
+                "place_by_ris": True if (not dq and r.get("place") and r.get("ranked_by_ris")) else None,
                 "instagram": r.get("instagram"),
-                "ris_official": r.get("ris") or None,
+                "ris_official": None if dq else (r.get("ris") or None),
                 "attempts": [[a["movement"], a["attempt"], a["weight"], a["success"]]
                              for a in r.get("attempts", [])],
             }
@@ -392,7 +408,7 @@ def main():
                 "pull_up": best.get("pull_up"),
                 "dip": best.get("dip"),
                 "squat": best.get("squat"),
-                "total": r.get("total"),
+                "total": None if dq else r.get("total"),
                 "ris": extras["ris_official"],
                 "ris_site": None,
                 "competition": r.get("event"),
