@@ -3,7 +3,8 @@
  "merge_athletes": [],
  "athletes": {
   "cardy-remy": {
-   "name": "Remy Cardy"
+   "name": "Remy Cardy",
+   "country": "CH"
   }
  }
 }

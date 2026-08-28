@@ -718,6 +718,8 @@ def main():
     for aid, fields in overrides.get("athletes", {}).items():
         if aid in athlete_meta:
             athlete_meta[aid].update(fields)
+            if "country" in fields:   # an explicit override IS the nationality
+                athlete_meta[aid]["countries"] = {fields["country"]}
             for row in performances:
                 if row["athlete_id"] == aid:
                     for f in ("country", "gender"):
