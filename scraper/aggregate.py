@@ -364,33 +364,6 @@ def main():
             fr_new += 1
         print(f"finalrep api: {fr_new} new performances, {fr_dupes} merged into OSL rows")
 
-    # An athlete cannot post two results with the same total within 2 days:
-    # such rows are source-side duplicates — keep the most informative one.
-    def richness(row):
-        return (bool(row.get("attempts")), bool(row.get("place")),
-                sum(1 for v in row.values() if v is not None))
-    groups = {}
-    for row in performances:
-        groups.setdefault((row["athlete_id"],
-                           round(row["total"], 2) if row.get("total") else None), []).append(row)
-    deduped, dropped = [], 0
-    for rows in groups.values():
-        rows.sort(key=lambda x: x.get("date") or "")
-        kept = []
-        for row in rows:
-            near = next((k for k in kept if row.get("date") and k.get("date")
-                         and abs((int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10]))
-                                 - (int(k["date"][:4]) * 372 + int(k["date"][5:7]) * 31 + int(k["date"][8:10]))) <= 2), None)
-            if near is None:
-                kept.append(row)
-            else:
-                dropped += 1
-                if richness(row) > richness(near):
-                    near.update({k: v for k, v in row.items() if v is not None})
-        deduped.extend(kept)
-    performances = deduped
-    if dropped:
-        print(f"dropped {dropped} near-duplicate rows (same total within 2 days)")
 
     # Re-sync row identity from the consolidated athlete record (gender may
     # have been corrected by Final Rep group data, names/countries backfilled)
@@ -430,15 +403,57 @@ def main():
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
                 redirect[drop["id"]] = keep["id"]
+    # Evidence-based merge: compatible names (token subset) AND a shared
+    # performance (identical total within 10 days) prove the same person,
+    # even when the sources disagree on country or exact name.
+    perfs_by_aid = {}
+    for row in performances:
+        if row.get("total") and row.get("date"):
+            perfs_by_aid.setdefault(row["athlete_id"], []).append(
+                (round(row["total"], 2),
+                 int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10])))
+
+    def shared_performance(aid1, aid2):
+        for t1, d1 in perfs_by_aid.get(aid1, []):
+            for t2, d2 in perfs_by_aid.get(aid2, []):
+                if t1 == t2 and abs(d1 - d2) <= 10:
+                    return True
+        return False
+
+    for aids in buckets.values():
+        for i in range(len(aids)):
+            for j in range(i + 1, len(aids)):
+                ai, bj = aids[i], aids[j]
+                while ai in redirect: ai = redirect[ai]
+                while bj in redirect: bj = redirect[bj]
+                if ai == bj:
+                    continue
+                a, b = athlete_meta[ai], athlete_meta[bj]
+                if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
+                    continue
+                if not names_compatible(a.get("name"), b.get("name")):
+                    continue
+                if not shared_performance(ai, bj):
+                    continue
+                keep, drop = (a, b) if n_perfs.get(ai, 0) >= n_perfs.get(bj, 0) else (b, a)
+                if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
+                    keep["name"] = drop["name"]   # fuller name wins
+                for field in ("country", "gender", "instagram", "profile_url"):
+                    if not keep.get(field) and drop.get(field):
+                        keep[field] = drop[field]
+                redirect[drop["id"]] = keep["id"]
+
     if redirect:
         for row in performances:
-            tgt = redirect.get(row["athlete_id"])
-            if tgt:
+            tgt = row["athlete_id"]
+            while tgt in redirect:
+                tgt = redirect[tgt]
+            if tgt != row["athlete_id"]:
                 row["athlete_id"] = tgt
                 row["athlete"] = athlete_meta[tgt]["name"]
         for old in redirect:
-            del athlete_meta[old]
-        print(f"merged {len(redirect)} misspelled duplicate athlete profiles")
+            athlete_meta.pop(old, None)
+        print(f"merged {len(redirect)} duplicate athlete profiles (spelling/evidence)")
 
     # Junk class labels count as "no class" (inference will fill them)
     for row in performances:
@@ -487,6 +502,34 @@ def main():
                 r["class_inferred"] = True
                 inferred += 1
     print(f"inferred weight class for {inferred} unclassed performances")
+
+    # An athlete cannot post two results with the same total within 10 days:
+    # such rows are source-side duplicates — keep the most informative one.
+    def richness(row):
+        return (bool(row.get("attempts")), bool(row.get("place")),
+                sum(1 for v in row.values() if v is not None))
+    groups = {}
+    for row in performances:
+        groups.setdefault((row["athlete_id"],
+                           round(row["total"], 2) if row.get("total") else None), []).append(row)
+    deduped, dropped = [], 0
+    for rows in groups.values():
+        rows.sort(key=lambda x: x.get("date") or "")
+        kept = []
+        for row in rows:
+            near = next((k for k in kept if row.get("date") and k.get("date")
+                         and abs((int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10]))
+                                 - (int(k["date"][:4]) * 372 + int(k["date"][5:7]) * 31 + int(k["date"][8:10]))) <= 10), None)
+            if near is None:
+                kept.append(row)
+            else:
+                dropped += 1
+                if richness(row) > richness(near):
+                    near.update({k: v for k, v in row.items() if v is not None})
+        deduped.extend(kept)
+    performances = deduped
+    if dropped:
+        print(f"dropped {dropped} near-duplicate rows (same total within 10 days)")
 
     # ── athlete records built from the merged rows ──
     by_athlete = {}
