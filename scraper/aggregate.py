@@ -587,6 +587,34 @@ def main():
                 inferred += 1
     print(f"inferred weight class for {inferred} unclassed performances")
 
+    # Estimate missing RIS scores. The formula needs bodyweight; when the
+    # source omits it, use (in order): the athlete's nearest-in-time known
+    # bodyweight, else the class limit — an upper bound on bodyweight, hence
+    # a LOWER bound on RIS (never overestimates). Marked ris_est (~).
+    def dnum(d):
+        return int(d[:4]) * 372 + int(d[5:7]) * 31 + int(d[8:10])
+    bw_by_aid = {}
+    for row in performances:
+        if row.get("bodyweight") and row.get("date"):
+            bw_by_aid.setdefault(row["athlete_id"], []).append((dnum(row["date"]), row["bodyweight"]))
+    CLASS_LIMIT = re.compile(r"^-(\d+(?:\.\d+)?)kg$")
+    ris_estimated = 0
+    for row in performances:
+        if row.get("ris") or not row.get("total") or row.get("gender") not in RIS_CONST:
+            continue
+        bw = None
+        if row.get("date") and bw_by_aid.get(row["athlete_id"]):
+            bw = min(bw_by_aid[row["athlete_id"]], key=lambda t: abs(t[0] - dnum(row["date"])))[1]
+        if bw is None:
+            m = CLASS_LIMIT.match(row.get("class") or "")
+            if m:
+                bw = float(m.group(1))
+        if bw:
+            row["ris"] = ris_score(row["gender"], bw, row["total"])
+            row["ris_est"] = True
+            ris_estimated += 1
+    print(f"estimated RIS for {ris_estimated} performances (nearest bodyweight or class limit)")
+
     # An athlete cannot post two results with the same total within 10 days:
     # such rows are source-side duplicates — keep the most informative one.
     def richness(row):
@@ -627,6 +655,8 @@ def main():
             "n_competitions": len(perfs),
             "best": {m: max((p[m] for p in perfs if p.get(m) is not None), default=None) for m in MOVEMENTS},
             "best_ris": max((p["ris"] for p in perfs if p.get("ris")), default=None),
+            "best_ris_est": (max(((p["ris"], bool(p.get("ris_est"))) for p in perfs if p.get("ris")),
+                                 default=(None, False))[1] or None),
             "performances": [
                 {k: v for k, v in p.items()
                  if k not in ("athlete_id", "athlete", "country", "gender")}
@@ -656,6 +686,7 @@ def main():
                         "country": p["country"], "competition": p["competition"],
                         "date": p["date"], "bodyweight": p["bodyweight"],
                         "class_inferred": True if (klass != "all" and p.get("class_inferred")) else None,
+                        "estimated": True if (movement == "ris" and p.get("ris_est")) else None,
                     }
 
     # ── unified records: one list, best mark whatever the source ──

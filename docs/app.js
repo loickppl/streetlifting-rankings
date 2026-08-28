@@ -266,11 +266,12 @@ function renderRankings() {
 
   const maxVal = shown.length ? shown[0][metric] : 1;
   const valueCell = (p, m) => {
+    const pre = m === "ris" && p.ris_est ? "~\u2009" : "";
     if (m !== metric)
-      return `<td class="num mv">${fmt(p[m])}</td>`;
+      return `<td class="num mv">${pre}${fmt(p[m])}</td>`;
     const pct = Math.max(6, Math.round((p[m] / maxVal) * 100));
     return `<td class="num metric-cell">
-      <div class="metric-val">${fmt(p[m])}</div>
+      <div class="metric-val">${pre}${fmt(p[m])}</div>
       <div class="metric-bar" style="width:${pct * 0.62}px"></div>
     </td>`;
   };
@@ -321,7 +322,7 @@ function renderRecords() {
           return `<div class="record-row">
             <span class="record-move">${mn[m]}</span>
             <span class="record-holder">${flagEmoji(r.country)}${holder}</span>
-            <span class="record-value">${r.class_inferred ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
+            <span class="record-value">${r.class_inferred || r.estimated ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
           </div>`;
         }).join("")}
       </div>
@@ -385,7 +386,7 @@ function openAthlete(id) {
       <div class="bests">
         ${["muscle_up", "pull_up", "dip", "squat", "total"].map(m => `
           <div class="best-chip"><div class="v">${fmt(a.best?.[m])}</div><div class="l">${mn[m]}</div></div>`).join("")}
-        <div class="best-chip"><div class="v">${fmt(a.best_ris)}</div><div class="l">RIS</div></div>
+        <div class="best-chip"><div class="v">${a.best_ris_est ? "~\u2009" : ""}${fmt(a.best_ris)}</div><div class="l">RIS</div></div>
       </div>
       <h3>${t().history}</h3>
       <div class="table-scroll"><table class="table compact"><thead><tr>
@@ -404,7 +405,7 @@ function openAthlete(id) {
             </td>
             <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
             <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
-            <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${fmt(p.ris)}</td>
+            <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${p.ris_est ? "~\u2009" : ""}${fmt(p.ris)}</td>
           </tr>`;
           if (!hasAtt) return main;
           const byMove = {};
