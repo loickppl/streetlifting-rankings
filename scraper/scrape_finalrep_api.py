@@ -313,8 +313,8 @@ def parse_statistics(stats, ev):
             for a in attempts:
                 if a["success"] and isinstance(a["weight"], (int, float)):
                     m = a["movement"]
-                    if a["weight"] > best.get(m, 0):
-                        best[m] = a["weight"]
+                    if m not in best or a["weight"] > best[m]:
+                        best[m] = a["weight"]   # 0 = validated bodyweight-only lift
             results.append({
                 "event_id": ev["id"], "event": ev["name"], "event_type": ev["type"],
                 "date": (ast.get("date") or ev.get("start_date") or "")[:10] or None,

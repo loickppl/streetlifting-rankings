@@ -285,7 +285,14 @@ def main():
             if r.get("event_type") not in FR_TYPES or r.get("disqualified") or not r.get("best"):
                 continue  # not 4-lift 1RM streetlifting, or no valid lift
             gender, klass = parse_fr_group(r.get("weight_class"))
-            best = r["best"]
+            # rebuild best from the attempt log: a successful 0 kg attempt is a
+            # validated bodyweight-only lift, not a missing value
+            best = dict(r.get("best") or {})
+            for att in r.get("attempts", []):
+                if att.get("success") and isinstance(att.get("weight"), (int, float)):
+                    mv = att["movement"]
+                    if mv not in best or att["weight"] > best[mv]:
+                        best[mv] = att["weight"]
             extras = {
                 "place": r.get("place"),
                 "place_by_ris": True if (r.get("place") and r.get("ranked_by_ris")) else None,
@@ -297,6 +304,9 @@ def main():
             match = find_match(r)
             if match is not None:
                 match.update({k: v for k, v in extras.items() if v})
+                for mv in ("muscle_up", "pull_up", "dip", "squat"):
+                    if match.get(mv) is None and best.get(mv) is not None:
+                        match[mv] = best[mv]
                 if extras["ris_official"]:
                     match["ris"] = extras["ris_official"]
                 match["source"] = "osl+finalrep"
@@ -602,7 +612,7 @@ def main():
         athletes.append({
             **meta,
             "n_competitions": len(perfs),
-            "best": {m: max((p[m] for p in perfs if p.get(m)), default=None) for m in MOVEMENTS},
+            "best": {m: max((p[m] for p in perfs if p.get(m) is not None), default=None) for m in MOVEMENTS},
             "best_ris": max((p["ris"] for p in perfs if p.get("ris")), default=None),
             "performances": [
                 {k: v for k, v in p.items()
