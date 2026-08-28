@@ -152,20 +152,22 @@ class FinalRepClient:
 
 # ── crawl ───────────────────────────────────────────────────────────────
 
-def list_events(client, continents=None, streetlifting_only=True):
-    """Walk /feed-api/v1/feed across continents to enumerate events.
-
-    The feed is filterable by continent/country; we sweep continents to
-    widen coverage. De-duplicated by event id.
+def list_events(client, continents=None):
+    """Enumerate events from both feeds:
+      /feed-api/v1/feed     — upcoming events
+      /feed-api/v1/results  — finished events with results ("Latest Results")
+    Both are filterable by continent/country; we sweep continents to widen
+    coverage. De-duplicated by event id.
     """
     continents = continents or ["europe", "north_america", "south_america",
                                 "asia", "africa", "oceania"]
     events = {}
-    for cont in [None] + continents:
-        params = {"continent": cont} if cont else None
-        resp = client.get("/feed-api/v1/feed", params=params)
+
+    def harvest(path, params, label):
+        resp = client.get(path, params=params)
         emb = client.embedded(resp) or {}
         items = emb.get("items", []) if isinstance(emb, dict) else []
+        new = 0
         for it in items:
             ev = (it.get("data") or {}).get("event") or {}
             eid = ev.get("id")
@@ -174,10 +176,29 @@ def list_events(client, continents=None, streetlifting_only=True):
             events[eid] = {
                 "id": eid, "name": ev.get("name"), "type": ev.get("type"),
                 "state": ev.get("event_state"), "affiliated": ev.get("finalrep_affiliated"),
-                "start_date": ev.get("start_date"), "location": ev.get("location"),
+                "start_date": ev.get("start_date"), "end_date": ev.get("end_date"),
+                "location": ev.get("location"),
+                "country": (ev.get("coordinates") or {}).get("country"),
+                "continent": (ev.get("coordinates") or {}).get("continent"),
+                "finished": path.endswith("/results"),
             }
-        print(f"  feed[{cont or 'all'}]: {len(items)} items, {len(events)} unique so far")
+            new += 1
+        print(f"  {label}: {len(items)} items, +{new} new ({len(events)} total)")
         time.sleep(DELAY)
+        return len(items)
+
+    # countries come from the feed's filter_options (fallback list below)
+    resp = client.get("/feed-api/v1/feed")
+    fo = (client.embedded(resp) or {}).get("filter_options", {}) if resp else {}
+    countries = fo.get("countries", [])
+
+    for path, tag in [("/feed-api/v1/results", "results"), ("/feed-api/v1/feed", "feed")]:
+        harvest(path, {"continent": "", "country": ""}, f"{tag}[all]")
+        for cont in continents:
+            harvest(path, {"continent": cont, "country": ""}, f"{tag}[{cont}]")
+        for country in countries:
+            harvest(path, {"continent": "", "country": country}, f"{tag}[{country}]")
+
     return list(events.values())
 
 
