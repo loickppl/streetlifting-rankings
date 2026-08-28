@@ -63,6 +63,22 @@ def name_tokens(name):
     return frozenset(n.split()) if n else frozenset()
 
 
+def shift_date(iso, days):
+    from datetime import date, timedelta
+    try:
+        y, m, d = map(int, iso.split("-"))
+        return (date(y, m, d) + timedelta(days=days)).isoformat()
+    except Exception:
+        return None
+
+
+def fix_case(name):
+    """Final Rep stores many names lowercase — title-case them for display."""
+    if name and name == name.lower():
+        return " ".join(w.capitalize() for w in name.split())
+    return name
+
+
 def names_compatible(a, b):
     """True when one name's tokens are a subset of the other's
     (e.g. 'Pere Coll' vs 'Pere Coll Fernandez'). Requires >= 2 common tokens."""
@@ -163,17 +179,26 @@ def main():
         name_to_id = {norm_name(m["name"]): aid for aid, m in athlete_meta.items() if m["name"]}
 
         def find_match(r):
-            """Same performance across sources: exact (name, date, total) —
-            or same (date, total) with compatible names (source name variants)."""
+            """Same performance across sources: same total and compatible
+            athlete name, within +/-2 days (multi-day competitions are dated
+            differently by each source)."""
             if not (r.get("date") and r.get("total")):
                 return None
-            key = (norm_name(r.get("athlete")), r["date"], round(r["total"], 2))
-            row = by_key.get(key)
-            if row is not None:
-                return row
-            cands = [x for x in by_date_total.get((r["date"], round(r["total"], 2)), [])
-                     if names_compatible(x["athlete"], r.get("athlete"))]
-            return cands[0] if len(cands) == 1 else None
+            total = round(r["total"], 2)
+            nm = norm_name(r.get("athlete"))
+            for delta in (0, -1, 1, -2, 2):
+                d = shift_date(r["date"], delta)
+                if not d:
+                    return None
+                row = by_key.get((nm, d, total))
+                if row is not None:
+                    return row
+            cands = []
+            for delta in (0, -1, 1, -2, 2):
+                d = shift_date(r["date"], delta)
+                cands += [x for x in by_date_total.get((d, total), [])
+                          if names_compatible(x["athlete"], r.get("athlete"))]
+            return cands[0] if len({id(x) for x in cands}) >= 1 and len(cands) == 1 else None
 
         def find_athlete_id(name):
             """Unique athlete whose name is compatible (token subset) with `name`."""
@@ -203,6 +228,16 @@ def main():
                     match["ris"] = extras["ris_official"]
                 match["source"] = "osl+finalrep"
                 owner = athlete_meta.get(match["athlete_id"])
+                if owner and r.get("athlete"):
+                    # OSL truncates long names ("Yanis Capitolin Na.."):
+                    # if the FR name matches all but a short trailing fragment,
+                    # prefer the FR (complete) form
+                    ot = list((owner.get("name") or "").rstrip(". ").split())
+                    ft = name_tokens(r["athlete"])
+                    on = [norm_name(x) for x in ot]
+                    if (len(on) >= 3 and len(on[-1]) <= 2
+                            and set(on[:-1]) == set(ft) and on[-1] not in ft):
+                        owner["name"] = fix_case(r["athlete"])
                 if owner:   # backfill identity fields OSL doesn't always have
                     for field, value in (("instagram", r.get("instagram")),
                                          ("country", r.get("country")),
@@ -218,7 +253,7 @@ def main():
                 aid = f"fr-{r['athlete_id']}"
                 if aid not in athlete_meta:
                     athlete_meta[aid] = {
-                        "id": aid, "name": r.get("athlete"), "country": r.get("country"),
+                        "id": aid, "name": fix_case(r.get("athlete")), "country": r.get("country"),
                         "gender": gender, "profile_url": None, "instagram": r.get("instagram"),
                     }
                 if r.get("athlete"):
@@ -252,20 +287,33 @@ def main():
             fr_new += 1
         print(f"finalrep api: {fr_new} new performances, {fr_dupes} merged into OSL rows")
 
-    # An athlete cannot post two results the same day with the same total:
+    # An athlete cannot post two results with the same total within 2 days:
     # such rows are source-side duplicates — keep the most informative one.
     def richness(row):
         return (bool(row.get("attempts")), bool(row.get("place")),
                 sum(1 for v in row.values() if v is not None))
-    best_row = {}
+    groups = {}
     for row in performances:
-        k = (row["athlete_id"], row.get("date"), round(row["total"], 2) if row.get("total") else None)
-        if k not in best_row or richness(row) > richness(best_row[k]):
-            best_row[k] = row
-    dropped = len(performances) - len(best_row)
-    performances = list(best_row.values())
+        groups.setdefault((row["athlete_id"],
+                           round(row["total"], 2) if row.get("total") else None), []).append(row)
+    deduped, dropped = [], 0
+    for rows in groups.values():
+        rows.sort(key=lambda x: x.get("date") or "")
+        kept = []
+        for row in rows:
+            near = next((k for k in kept if row.get("date") and k.get("date")
+                         and abs((int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10]))
+                                 - (int(k["date"][:4]) * 372 + int(k["date"][5:7]) * 31 + int(k["date"][8:10]))) <= 2), None)
+            if near is None:
+                kept.append(row)
+            else:
+                dropped += 1
+                if richness(row) > richness(near):
+                    near.update({k: v for k, v in row.items() if v is not None})
+        deduped.extend(kept)
+    performances = deduped
     if dropped:
-        print(f"dropped {dropped} same-day duplicate rows")
+        print(f"dropped {dropped} near-duplicate rows (same total within 2 days)")
 
     # ── athlete records built from the merged rows ──
     by_athlete = {}
