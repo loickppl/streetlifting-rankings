@@ -11,7 +11,7 @@ const I18N = {
     stat_athletes: "Athlètes", stat_perfs: "Performances", stat_records: "Records mondiaux", stat_updated: "Mise à jour",
     f_style: "Style", f_top: "Top", f_search: "Recherche",
     f_period: "Période", p_all: "Depuis toujours", p_custom: "Dates…", f_from: "Du", f_to: "Au",
-    f_best: "Meilleure perf par athlète",
+    f_country: "Pays",
     men: "Hommes", women: "Femmes", all_m: "Tous", all_f: "Tous", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Traction", m_dip: "Dips", m_sq: "Squat",
     ph_search: "Athlète, pays, compétition…", ph_search_a: "Nom, pays…",
@@ -38,7 +38,7 @@ const I18N = {
     stat_athletes: "Athletes", stat_perfs: "Performances", stat_records: "World records", stat_updated: "Updated",
     f_style: "Style", f_top: "Top", f_search: "Search",
     f_period: "Period", p_all: "All time", p_custom: "Dates…", f_from: "From", f_to: "To",
-    f_best: "Best result per athlete",
+    f_country: "Country",
     men: "Men", women: "Women", all_m: "All", all_f: "All", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Pull-up", m_dip: "Dip", m_sq: "Squat",
     ph_search: "Athlete, country, competition…", ph_search_a: "Name, country…",
@@ -184,6 +184,19 @@ function refreshClassChips() {
       : "");
 }
 
+function refreshCountryOptions() {
+  const sel = $("#f-country");
+  const prev = sel.value;
+  const codes = [...new Set(state.performances.map(p => p.country).filter(Boolean))];
+  let dn = null;
+  try { dn = new Intl.DisplayNames([state.lang === "fr" ? "fr" : "en"], { type: "region" }); } catch {}
+  const label = (c) => { try { return dn?.of(c) || c; } catch { return c; } };
+  const opts = codes.map(c => [c, label(c)]).sort((a, b) => a[1].localeCompare(b[1], state.lang));
+  sel.innerHTML = `<option value="">${t().all_m}</option>` +
+    opts.map(([c, l]) => `<option value="${esc(c)}">${esc(l)}</option>`).join("");
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
 /* ── rankings ─────────────────────────────────────────────── */
 function dateRange() {
   const period = $("#f-period").value;
@@ -197,23 +210,22 @@ function dateRange() {
 }
 function rankingRows() {
   const q = $("#f-search").value.trim().toLowerCase();
-  const bestOnly = $("#f-best").checked;
+  const country = $("#f-country").value;
   const { gender, metric, klass } = state;
 
   const [from, to] = dateRange();
   let rows = state.performances.filter(p =>
     p.gender === gender && p[metric] != null &&
     (!klass || p.class === klass) &&
+    (!country || p.country === country) &&
     (!from || (p.date && p.date >= from)) &&
     (!to || (p.date && p.date <= to)) &&
     (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
 
   rows.sort((a, b) => b[metric] - a[metric]);
-  if (bestOnly) {
-    const seen = new Set();
-    rows = rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
-  }
-  return rows;
+  // a ranking lists each athlete once: keep their best result in the filter scope
+  const seen = new Set();
+  return rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
 }
 
 function renderPodium(rows) {
@@ -468,7 +480,7 @@ function bind() {
   $("#lang-toggle").addEventListener("click", () => {
     state.lang = state.lang === "fr" ? "en" : "fr";
     try { localStorage.setItem("sl-lang", state.lang); } catch {}
-    applyI18n(); refreshClassChips();
+    applyI18n(); refreshClassChips(); refreshCountryOptions();
     renderRankings(); renderRecords(); renderAthletes();
   });
 
@@ -492,7 +504,7 @@ function bind() {
     $("#f-class").querySelectorAll(".chip").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();
   });
-  ["#f-top", "#f-best", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
+  ["#f-top", "#f-country", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
   $("#f-period").addEventListener("change", () => {
     const custom = $("#f-period").value === "custom";
     $("#date-from-wrap").classList.toggle("hidden", !custom);
@@ -550,6 +562,7 @@ function bind() {
   }
   applyI18n();
   refreshClassChips();
+  refreshCountryOptions();
   renderRankings();
   renderRecords();
   renderAthletes();
