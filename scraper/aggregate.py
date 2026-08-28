@@ -526,10 +526,22 @@ def main():
             athlete_meta.pop(old, None)
         print(f"merged {len(redirect)} duplicate athlete profiles (spelling/evidence)")
 
-    # Junk class labels count as "no class" (inference will fill them)
+    # Non-standard class labels ("Over 64kg", "Under 64kg", "N/A"...) come
+    # from defunct grids and are not official categories: reclassify by
+    # bodyweight when known (exact), else clear — the temporal inference
+    # then fills them from the athlete's nearest classed result (marked ~).
+    CLASS_FMT = re.compile(r"^[+\-]\d+(?:\.\d+)?kg$")
+    odd = 0
     for row in performances:
-        if (row.get("class") or "").strip().lower().replace("/", "") in ("na", "n a", ""):
-            row["class"] = None
+        c = (row.get("class") or "").strip()
+        if c and not CLASS_FMT.match(c):
+            if row.get("bodyweight") and row.get("gender") in LADDER:
+                row["class"] = class_for_bodyweight(row["gender"], row["bodyweight"])
+            else:
+                row["class"] = None
+            odd += 1
+    if odd:
+        print(f"reclassified {odd} non-standard class labels")
 
     # Fold legacy "+X" classes into the standard ladder
     folded = sum(1 for row in performances if PLUS_CLASS_RE.match(row.get("class") or "")
