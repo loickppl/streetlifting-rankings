@@ -79,6 +79,42 @@ def fix_case(name):
     return name
 
 
+def _lev1(a, b):
+    """True if edit distance between two strings is <= 1."""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la > lb:
+        a, b, la, lb = b, a, lb, la
+    i = j = diff = 0
+    while i < la and j < lb:
+        if a[i] == b[j]:
+            i += 1; j += 1
+        else:
+            diff += 1
+            if diff > 1:
+                return False
+            if la == lb:
+                i += 1
+            j += 1
+    return True
+
+
+def names_fuzzy_equal(a, b):
+    """Same person spelled slightly differently ('Jacques' vs 'Jaques'):
+    same token count, >=2 tokens exactly equal, every remaining token within
+    edit distance 1 of its counterpart."""
+    ta, tb = sorted(name_tokens(a)), sorted(name_tokens(b))
+    if len(ta) != len(tb) or len(ta) < 2:
+        return False
+    exact = sum(1 for x, y in zip(ta, tb) if x == y)
+    if exact < max(2, len(ta) - 1):
+        return False
+    return all(_lev1(x, y) for x, y in zip(ta, tb))
+
+
 def names_compatible(a, b):
     """True when one name's tokens are a subset of the other's
     (e.g. 'Pere Coll' vs 'Pere Coll Fernandez'). Requires >= 2 common tokens."""
@@ -364,6 +400,45 @@ def main():
             row["athlete"] = m["name"] or row["athlete"]
             row["country"] = m["country"] or row["country"]
             row["gender"] = m["gender"] or row["gender"]
+
+    # Merge athlete profiles that differ only by a spelling slip
+    # ('Jacques Daryl Ndongo' / 'Jaques Daryl Ndongo'): fuzzy-equal names,
+    # same gender, compatible countries.
+    buckets = {}
+    for aid, m in athlete_meta.items():
+        for tok in name_tokens(m.get("name")):
+            if len(tok) >= 4:
+                buckets.setdefault(tok, []).append(aid)
+    redirect = {}
+    n_perfs = {}
+    for row in performances:
+        n_perfs[row["athlete_id"]] = n_perfs.get(row["athlete_id"], 0) + 1
+    for aids in buckets.values():
+        for i in range(len(aids)):
+            for j in range(i + 1, len(aids)):
+                a, b = athlete_meta[aids[i]], athlete_meta[aids[j]]
+                if a["id"] in redirect or b["id"] in redirect:
+                    continue
+                if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
+                    continue
+                if a.get("country") and b.get("country") and a["country"] != b["country"]:
+                    continue
+                if not names_fuzzy_equal(a.get("name"), b.get("name")):
+                    continue
+                keep, drop = (a, b) if n_perfs.get(a["id"], 0) >= n_perfs.get(b["id"], 0) else (b, a)
+                for field in ("country", "gender", "instagram", "profile_url"):
+                    if not keep.get(field) and drop.get(field):
+                        keep[field] = drop[field]
+                redirect[drop["id"]] = keep["id"]
+    if redirect:
+        for row in performances:
+            tgt = redirect.get(row["athlete_id"])
+            if tgt:
+                row["athlete_id"] = tgt
+                row["athlete"] = athlete_meta[tgt]["name"]
+        for old in redirect:
+            del athlete_meta[old]
+        print(f"merged {len(redirect)} misspelled duplicate athlete profiles")
 
     # Junk class labels count as "no class" (inference will fill them)
     for row in performances:
