@@ -140,24 +140,39 @@ def class_for_bodyweight(gender, bw):
     return f"+{top:g}kg" if top else None
 
 
+MINUS_CLASS_RE = re.compile(r"^-(\d+(?:\.\d+)?)kg$")
+
+
 def normalize_class(row):
-    m = PLUS_CLASS_RE.match(row.get("class") or "")
     gender = row.get("gender")
-    if not m or gender not in LADDER:
+    if gender not in LADDER:
         return
-    bound = float(m.group(1))
     top = LADDER[gender][-1]
-    if bound == top:
-        return  # real open class (+101 / +70)
-    if bound > top:
-        row["class"] = f"+{top:g}kg"   # over a higher legacy bound -> certainly over top
+    cls = row.get("class") or ""
+    m = PLUS_CLASS_RE.match(cls)
+    if m:
+        bound = float(m.group(1))
+        if bound == top:
+            return  # real open class (+101 / +70)
+        if bound > top:
+            row["class"] = f"+{top:g}kg"   # over a higher legacy bound -> certainly over top
+            return
+        if row.get("bodyweight"):
+            row["class"] = class_for_bodyweight(gender, row["bodyweight"])
+        else:
+            nxt = next((b for b in LADDER[gender] if b > bound), top)
+            row["class"] = f"-{nxt:g}kg" if nxt < top or bound < top else f"+{top:g}kg"
+            row["class_inferred"] = True
         return
-    if row.get("bodyweight"):
-        row["class"] = class_for_bodyweight(gender, row["bodyweight"])
-    else:
-        nxt = next((b for b in LADDER[gender] if b > bound), top)
-        row["class"] = f"-{nxt:g}kg" if nxt < top or bound < top else f"+{top:g}kg"
-        row["class_inferred"] = True
+    m = MINUS_CLASS_RE.match(cls)
+    if m and float(m.group(1)) > top:
+        # "-104kg" men / "-80kg" women: defunct grids above the official top —
+        # exact class from bodyweight when known, else the open class (marked ~)
+        if row.get("bodyweight"):
+            row["class"] = class_for_bodyweight(gender, row["bodyweight"])
+        else:
+            row["class"] = f"+{top:g}kg"
+            row["class_inferred"] = True
 
 
 # Final Rep event types kept: 4-movement 1RM streetlifting only.
@@ -544,10 +559,13 @@ def main():
     if odd:
         print(f"reclassified {odd} non-standard class labels")
 
-    # Fold legacy "+X" classes into the standard ladder
-    folded = sum(1 for row in performances if PLUS_CLASS_RE.match(row.get("class") or "")
-                 and (normalize_class(row) or True))
-    print(f"normalized {folded} legacy '+X' class labels")
+    # Fold legacy classes into the standard ladder ("+87", "-104", "-80" women…)
+    folded = 0
+    for row in performances:
+        before = row.get("class")
+        normalize_class(row)
+        folded += row.get("class") != before
+    print(f"normalized {folded} legacy class labels")
 
     # Compute placements for rows that lack one (OSL-only competitions):
     # rank within (competition, gender, weight class) by total, lighter
