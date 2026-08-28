@@ -564,3 +564,6 @@ button { font-family: inherit; }
   color-scheme: dark;
 }
 .date-ctl input[type=date]:focus { outline: none; border-color: var(--volt); }
+
+/* place awarded on a RIS-based ranking (no weight classes) */
+.place-chip .ris-tag { margin-left: 4px; font-size: 8px; color: var(--volt); letter-spacing: .08em; }

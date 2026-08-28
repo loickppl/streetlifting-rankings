@@ -296,6 +296,7 @@ def parse_statistics(stats, ev):
     for gs in stats.get("group_stats", []):
         group = gs.get("group") or {}
         weight_class = group.get("name")
+        ranked_by_ris = bool(gs.get("sort_by_ris"))
         for ast in gs.get("athlete_stats", []):
             user = ast.get("user") or {}
             attempts = []
@@ -324,7 +325,8 @@ def parse_statistics(stats, ev):
                 "country": (user.get("country") or "").upper() or None,
                 "gender": (user.get("gender") or "").lower() or None,
                 "instagram": user.get("tag"),
-                "place": ast.get("place"),
+                "place": ast["place"] if isinstance(ast.get("place"), int) and ast["place"] > 0 else None,
+                "ranked_by_ris": ranked_by_ris,
                 "total": ast.get("total"),
                 "ris": round(ast["ris"], 2) if isinstance(ast.get("ris"), (int, float)) else None,
                 "disqualified": ast.get("disqualified"),

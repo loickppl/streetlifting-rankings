@@ -216,6 +216,7 @@ def main():
             best = r["best"]
             extras = {
                 "place": r.get("place"),
+                "place_by_ris": True if (r.get("place") and r.get("ranked_by_ris")) else None,
                 "instagram": r.get("instagram"),
                 "ris_official": r.get("ris") or None,
                 "attempts": [[a["movement"], a["attempt"], a["weight"], a["success"]]
