@@ -23,6 +23,7 @@ const I18N = {
     results: "résultats", no_data: "Aucun résultat",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Historique des compétitions", view_profile: "Profil OSL ↗",
+    attempts_hint: "voir les tentatives",
     competitions_word: "compétitions",
     footer_src: `Sources : <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS : <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
     footer_disc: "Projet communautaire non affilié. Données agrégées automatiquement depuis des sources publiques.",
@@ -48,6 +49,7 @@ const I18N = {
     results: "results", no_data: "No results",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Competition history", view_profile: "OSL profile ↗",
+    attempts_hint: "view attempts",
     competitions_word: "competitions",
     footer_src: `Sources: <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS: <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
     footer_disc: "Unaffiliated community project. Data automatically aggregated from public sources.",
@@ -376,10 +378,13 @@ function openAthlete(id) {
     .slice().sort((x, y) => (y.date || "").localeCompare(x.date || ""));
   const mn = t().metric_names;
 
+  const links = [];
+  if (a.instagram) links.push(`<a href="https://instagram.com/${esc(a.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(a.instagram)}</a>`);
+  if (a.profile_url) links.push(`<a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a>`);
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
       <h2>${flagEmoji(a.country)} ${esc(a.name)}</h2>
-      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)} · <a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a></div>
+      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
     </div>
     <div class="athlete-body">
       <div class="bests">
@@ -394,15 +399,33 @@ function openAthlete(id) {
         <th class="num">${t().col_dip}</th><th class="num">${t().col_sq}</th>
         <th class="num">${t().col_total}</th><th class="num">${t().col_ris}</th>
       </tr></thead><tbody>
-        ${perfs.map(p => `<tr>
-          <td class="id-cell">
-            <div class="comp-name" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</div>
-            <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${p.style ? ` · ${esc(p.style)}` : ""}</div>
-          </td>
-          <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
-          <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
-          <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${fmt(p.ris)}</td>
-        </tr>`).join("")}
+        ${perfs.map((p, i) => {
+          const hasAtt = Array.isArray(p.attempts) && p.attempts.length > 0;
+          const place = p.place ? `<span class="place-chip">#${p.place}</span> ` : "";
+          const main = `<tr class="${hasAtt ? "has-attempts" : ""}" ${hasAtt ? `data-attempts="${i}"` : ""}>
+            <td class="id-cell">
+              <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>
+              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${p.style ? ` · ${esc(p.style)}` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
+            </td>
+            <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
+            <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
+            <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${fmt(p.ris)}</td>
+          </tr>`;
+          if (!hasAtt) return main;
+          const byMove = {};
+          p.attempts.forEach(([m, n, w, ok]) => (byMove[m] ??= []).push([n, w, ok]));
+          const detail = `<tr class="attempts-row hidden" data-attempts-detail="${i}"><td colspan="7">
+            <div class="attempts-grid">
+              ${["muscle_up", "pull_up", "dip", "squat"].filter(m => byMove[m]).map(m => `
+                <div class="attempts-move">
+                  <span class="attempts-label">${t().metric_names[m]}</span>
+                  ${byMove[m].sort((x, y) => x[0] - y[0]).map(([n, w, ok]) =>
+                    `<span class="att ${ok ? "ok" : "ko"}">${fmt(w)}<small>${ok ? "✓" : "✗"}</small></span>`).join("")}
+                </div>`).join("")}
+            </div>
+          </td></tr>`;
+          return main + detail;
+        }).join("")}
       </tbody></table></div>
     </div>`;
   $("#modal").classList.remove("hidden");
@@ -484,6 +507,12 @@ function bind() {
     const link = e.target.closest("[data-athlete]");
     if (link) openAthlete(link.dataset.athlete);
   });
+  $("#modal-content").addEventListener("click", (e) => {
+    const row = e.target.closest("tr[data-attempts]");
+    if (!row) return;
+    const detail = $(`tr[data-attempts-detail="${row.dataset.attempts}"]`);
+    if (detail) detail.classList.toggle("hidden");
+  });
   $("#modal-close").addEventListener("click", () => $("#modal").classList.add("hidden"));
   $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) $("#modal").classList.add("hidden"); });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#modal").classList.add("hidden"); });
@@ -501,6 +530,8 @@ function bind() {
   if (["records", "athletes"].includes(tab)) setTab(tab, false);
   try {
     await loadData();
+    const am = location.hash.match(/^#a=(.+)$/);
+    if (am) openAthlete(decodeURIComponent(am[1]));
   } catch (err) {
     $("#rankings-table").innerHTML =
       `<tbody><tr><td class="empty-row">Data not available (${esc(err.message || err)})</td></tr></tbody>`;

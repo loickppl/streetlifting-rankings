@@ -18,6 +18,7 @@ per weight class or open).
 |---|---|
 | [Official Streetlifting rankings](https://rankings.officialstreetlifting.com/) | Full athlete competition histories: muscle-up, pull-up, dip, squat, total, RIS, weight class, bodyweight, style, competition, date |
 | [Final Rep records](https://final-rep.com/records/) | Official world records per weight class and movement |
+| Final Rep app API (`api.final-rep.com`, authenticated) | Full competition results with attempt-level detail (every lift: weight, attempt number, success), official RIS, athlete Instagram tags — merged and deduplicated against OSL results |
 | [RIS — warisradji.com](https://warisradji.com/ris/) | Relative Index for Streetlifting formula (2025 constants), recomputed locally |
 
 ### RIS
@@ -34,7 +35,8 @@ per weight class or open).
 ```
 scraper/
   scrape_osl.py        # OSL scraper: --mode full (baseline) / delta (daily, new comps only)
-  scrape_finalrep.py   # scrape final-rep.com world records
+  scrape_finalrep.py   # scrape final-rep.com world records (public page)
+  scrape_finalrep_api.py # authenticated Final Rep app API (see file docstring for auth)
   aggregate.py         # merge, recompute RIS, build the site JSON files
 data/
   raw/                 # raw per-source staging (needed by the delta merge)

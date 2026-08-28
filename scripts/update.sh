@@ -27,6 +27,12 @@ else
     python3 scraper/scrape_osl.py --mode delta
 fi
 python3 scraper/scrape_finalrep.py
+# Final Rep app API (needs data/raw/.finalrep_cookie — see scrape_finalrep_api.py)
+if [[ -f data/raw/.finalrep_cookie ]]; then
+    python3 scraper/scrape_finalrep_api.py || echo "WARN: Final Rep API scrape failed (token expired?)"
+else
+    echo "Final Rep API skipped (no cookie file)"
+fi
 python3 scraper/aggregate.py
 
 if git status --porcelain data/ docs/data/ | grep -q .; then
