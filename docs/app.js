@@ -230,7 +230,18 @@ function rankingRows() {
     (!to || (p.date && p.date <= to)) &&
     (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
 
-  rows.sort((a, b) => b[metric] - a[metric]);
+  // ties on the ranked value break by the lightest athlete: known bodyweight
+  // first, else the lighter weight class, else the better RIS
+  const classBound = (c) => {
+    const m = /^([+-])(\d+(?:\.\d+)?)kg$/.exec(c || "");
+    return m ? parseFloat(m[2]) + (m[1] === "+" ? 0.5 : 0) : Infinity;
+  };
+  // effective weight: actual bodyweight, else the class limit (upper bound)
+  const effW = (r) => r.bodyweight ?? classBound(r.class);
+  rows.sort((a, b) =>
+    (b[metric] - a[metric]) ||
+    (effW(a) - effW(b)) ||
+    ((b.ris ?? -Infinity) - (a.ris ?? -Infinity)));
   // a ranking lists each athlete once: keep their best result in the filter scope
   const seen = new Set();
   return rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
