@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Streetlifting World Rankings</title>
+<meta name="description" content="Aggregated streetlifting world rankings & records — muscle-up, pull-up, dip, squat, total, RIS.">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <h1 class="logo">🏋️ Streetlifting <span>Rankings</span></h1>
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="rankings" data-i18n="tab_rankings">Classements</button>
+      <button class="tab" data-tab="records" data-i18n="tab_records">Records</button>
+      <button class="tab" data-tab="athletes" data-i18n="tab_athletes">Athlètes</button>
+    </nav>
+    <div class="header-right">
+      <span class="updated" id="last-updated"></span>
+      <button id="lang-toggle" class="lang-btn" title="Language">EN</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- RANKINGS -->
+  <section id="panel-rankings" class="panel active">
+    <div class="filters">
+      <div class="filter">
+        <label data-i18n="f_gender">Sexe</label>
+        <select id="f-gender">
+          <option value="male" data-i18n="men">Hommes</option>
+          <option value="female" data-i18n="women">Femmes</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label data-i18n="f_metric">Classement par</label>
+        <select id="f-metric">
+          <option value="total" data-i18n="m_total">Total</option>
+          <option value="ris">RIS</option>
+          <option value="muscle_up" data-i18n="m_mu">Muscle-up</option>
+          <option value="pull_up" data-i18n="m_pu">Traction</option>
+          <option value="dip" data-i18n="m_dip">Dips</option>
+          <option value="squat" data-i18n="m_sq">Squat</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label data-i18n="f_class">Catégorie</label>
+        <select id="f-class"></select>
+      </div>
+      <div class="filter">
+        <label data-i18n="f_style">Style</label>
+        <select id="f-style">
+          <option value="" data-i18n="all_f">Tous</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label data-i18n="f_top">Top</label>
+        <select id="f-top">
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="0" data-i18n="all_m">Tous</option>
+        </select>
+      </div>
+      <div class="filter grow">
+        <label data-i18n="f_search">Recherche</label>
+        <input id="f-search" type="search" placeholder="Athlète, pays, compétition…" data-i18n-ph="ph_search">
+      </div>
+      <div class="filter checkbox">
+        <label><input type="checkbox" id="f-best" checked> <span data-i18n="f_best">Meilleure perf par athlète</span></label>
+      </div>
+    </div>
+    <h2 class="table-title" id="rankings-title"></h2>
+    <div class="table-scroll">
+      <table class="data-table" id="rankings-table"></table>
+    </div>
+  </section>
+
+  <!-- RECORDS -->
+  <section id="panel-records" class="panel">
+    <div class="filters">
+      <div class="filter">
+        <label data-i18n="f_source">Source</label>
+        <select id="r-source">
+          <option value="finalrep">Final Rep (officiel)</option>
+          <option value="computed" data-i18n="src_computed">Calculés (base OSL)</option>
+        </select>
+      </div>
+      <div class="filter">
+        <label data-i18n="f_gender">Sexe</label>
+        <select id="r-gender">
+          <option value="male" data-i18n="men">Hommes</option>
+          <option value="female" data-i18n="women">Femmes</option>
+        </select>
+      </div>
+    </div>
+    <div id="records-grid" class="records-grid"></div>
+  </section>
+
+  <!-- ATHLETES -->
+  <section id="panel-athletes" class="panel">
+    <div class="filters">
+      <div class="filter grow">
+        <label data-i18n="f_search">Recherche</label>
+        <input id="a-search" type="search" placeholder="Nom, pays…" data-i18n-ph="ph_search_a">
+      </div>
+      <div class="filter">
+        <label data-i18n="f_gender">Sexe</label>
+        <select id="a-gender">
+          <option value="" data-i18n="all_m">Tous</option>
+          <option value="male" data-i18n="men">Hommes</option>
+          <option value="female" data-i18n="women">Femmes</option>
+        </select>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="data-table" id="athletes-table"></table>
+    </div>
+  </section>
+</main>
+
+<!-- Athlete detail modal -->
+<div id="modal" class="modal hidden">
+  <div class="modal-box">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p data-i18n="footer_src">Sources : <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS : <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a></p>
+    <p class="disclaimer" data-i18n="footer_disc">Projet communautaire non affilié. Données agrégées automatiquement depuis des sources publiques.</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

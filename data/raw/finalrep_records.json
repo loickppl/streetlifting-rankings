@@ -1,0 +1,486 @@
+{
+ "source": "final-rep.com/records",
+ "scraped_at": "2026-08-28T11:34:55+00:00",
+ "records": [
+  {
+   "gender": "female",
+   "class": "-52kg",
+   "movement": "total",
+   "athlete": "Ludivine Compain",
+   "weight_kg": 251.25,
+   "instagram": "@ludi.c"
+  },
+  {
+   "gender": "female",
+   "class": "-52kg",
+   "movement": "muscle_up",
+   "athlete": "Ludivine Compain",
+   "weight_kg": 17.5,
+   "instagram": "@ludi.c"
+  },
+  {
+   "gender": "female",
+   "class": "-52kg",
+   "movement": "pull_up",
+   "athlete": "Katrena G Jia Min",
+   "weight_kg": 44.5,
+   "instagram": "@muscleupgiraffe"
+  },
+  {
+   "gender": "female",
+   "class": "-52kg",
+   "movement": "dip",
+   "athlete": "Katrena G Jia Min",
+   "weight_kg": 70.0,
+   "instagram": "@muscleupgiraffe"
+  },
+  {
+   "gender": "female",
+   "class": "-52kg",
+   "movement": "squat",
+   "athlete": "Anais Lozano",
+   "weight_kg": 140.0,
+   "instagram": "@anais.rojas"
+  },
+  {
+   "gender": "female",
+   "class": "-57kg",
+   "movement": "total",
+   "athlete": "Nadine Hettinga",
+   "weight_kg": 291.25,
+   "instagram": "@nadinehettinga_"
+  },
+  {
+   "gender": "female",
+   "class": "-57kg",
+   "movement": "muscle_up",
+   "athlete": "Martha Lubczynskyj",
+   "weight_kg": 31.5,
+   "instagram": "@marthalubfit"
+  },
+  {
+   "gender": "female",
+   "class": "-57kg",
+   "movement": "pull_up",
+   "athlete": "Martha Lubczynskyj",
+   "weight_kg": 62.75,
+   "instagram": "@marthalubfit"
+  },
+  {
+   "gender": "female",
+   "class": "-57kg",
+   "movement": "dip",
+   "athlete": "Nadine Hettinga",
+   "weight_kg": 83.5,
+   "instagram": "@nadinehettinga_"
+  },
+  {
+   "gender": "female",
+   "class": "-57kg",
+   "movement": "squat",
+   "athlete": "Julie Brion",
+   "weight_kg": 160.0,
+   "instagram": "@workoutbyjulie"
+  },
+  {
+   "gender": "female",
+   "class": "-63kg",
+   "movement": "total",
+   "athlete": "Faye Butler",
+   "weight_kg": 286.5,
+   "instagram": "@fayealexandrabutler"
+  },
+  {
+   "gender": "female",
+   "class": "-63kg",
+   "movement": "muscle_up",
+   "athlete": "Laura Garcia",
+   "weight_kg": 20.0,
+   "instagram": "@kiara_lifter"
+  },
+  {
+   "gender": "female",
+   "class": "-63kg",
+   "movement": "pull_up",
+   "athlete": "Gianna Webbe",
+   "weight_kg": 55.0,
+   "instagram": "@giannawebbe"
+  },
+  {
+   "gender": "female",
+   "class": "-63kg",
+   "movement": "dip",
+   "athlete": "Faye Butler",
+   "weight_kg": 84.0,
+   "instagram": "@fayealexandrabutler"
+  },
+  {
+   "gender": "female",
+   "class": "-63kg",
+   "movement": "squat",
+   "athlete": "Frida Austigard",
+   "weight_kg": 166.0,
+   "instagram": "@bicepsmami"
+  },
+  {
+   "gender": "female",
+   "class": "-70kg",
+   "movement": "total",
+   "athlete": "Lynn Narings",
+   "weight_kg": 293.75,
+   "instagram": "@_lifestylynn_"
+  },
+  {
+   "gender": "female",
+   "class": "-70kg",
+   "movement": "muscle_up",
+   "athlete": "Lynn Narings",
+   "weight_kg": 23.25,
+   "instagram": "@_lifestylynn_"
+  },
+  {
+   "gender": "female",
+   "class": "-70kg",
+   "movement": "pull_up",
+   "athlete": "Danae Morgan",
+   "weight_kg": 57.25,
+   "instagram": "@queenofgainz"
+  },
+  {
+   "gender": "female",
+   "class": "-70kg",
+   "movement": "dip",
+   "athlete": "Nadine Schulz",
+   "weight_kg": 80.5,
+   "instagram": "@nadinemuscleup"
+  },
+  {
+   "gender": "female",
+   "class": "-70kg",
+   "movement": "squat",
+   "athlete": "Milana Popovic",
+   "weight_kg": 163.0,
+   "instagram": "@milanapopovic__"
+  },
+  {
+   "gender": "female",
+   "class": "+70kg",
+   "movement": "total",
+   "athlete": "Sarah Anyamele",
+   "weight_kg": 337.5,
+   "instagram": "@sarah.chimdi"
+  },
+  {
+   "gender": "female",
+   "class": "+70kg",
+   "movement": "muscle_up",
+   "athlete": "Sarah Anyamele",
+   "weight_kg": 27.5,
+   "instagram": "@sarah.chimdi"
+  },
+  {
+   "gender": "female",
+   "class": "+70kg",
+   "movement": "pull_up",
+   "athlete": "Claudia van Osch",
+   "weight_kg": 53.75,
+   "instagram": "@cherry.priveeee"
+  },
+  {
+   "gender": "female",
+   "class": "+70kg",
+   "movement": "dip",
+   "athlete": "Sarah Anyamele",
+   "weight_kg": 85.0,
+   "instagram": "@sarah.chimdi"
+  },
+  {
+   "gender": "female",
+   "class": "+70kg",
+   "movement": "squat",
+   "athlete": "Sarah Anyamele",
+   "weight_kg": 180.0,
+   "instagram": "@sarah.chimdi"
+  },
+  {
+   "gender": "male",
+   "class": "-66kg",
+   "movement": "total",
+   "athlete": "Youssef Ashura Bouida",
+   "weight_kg": 448.0,
+   "instagram": "@ashura_workout"
+  },
+  {
+   "gender": "male",
+   "class": "-66kg",
+   "movement": "muscle_up",
+   "athlete": "Youssef Ashura Bouida",
+   "weight_kg": 43.0,
+   "instagram": "@ashura_workout"
+  },
+  {
+   "gender": "male",
+   "class": "-66kg",
+   "movement": "pull_up",
+   "athlete": "Youssef Ashura Bouida",
+   "weight_kg": 100.0,
+   "instagram": "@ashura_workout"
+  },
+  {
+   "gender": "male",
+   "class": "-66kg",
+   "movement": "dip",
+   "athlete": "Julien Capdeville",
+   "weight_kg": 143.25,
+   "instagram": "@_yohra_"
+  },
+  {
+   "gender": "male",
+   "class": "-66kg",
+   "movement": "squat",
+   "athlete": "Alessio Ceragioli",
+   "weight_kg": 210.0,
+   "instagram": "@alessio_ceragioli"
+  },
+  {
+   "gender": "male",
+   "class": "-73kg",
+   "movement": "total",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 526.75,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-73kg",
+   "movement": "muscle_up",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 46.25,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-73kg",
+   "movement": "pull_up",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 108.0,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-73kg",
+   "movement": "dip",
+   "athlete": "Johan Sanon",
+   "weight_kg": 158.0,
+   "instagram": "@jojo_bizarre_athlete"
+  },
+  {
+   "gender": "male",
+   "class": "-73kg",
+   "movement": "squat",
+   "athlete": "Lorenzo Mazzi",
+   "weight_kg": 243.0,
+   "instagram": "@lorenzo_mazzi"
+  },
+  {
+   "gender": "male",
+   "class": "-80kg",
+   "movement": "total",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 532.75,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-80kg",
+   "movement": "muscle_up",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 46.25,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-80kg",
+   "movement": "pull_up",
+   "athlete": "Chevillard Aubin",
+   "weight_kg": 106.0,
+   "instagram": "@obin.cd"
+  },
+  {
+   "gender": "male",
+   "class": "-80kg",
+   "movement": "dip",
+   "athlete": "Daniel Wassenaar",
+   "weight_kg": 161.25,
+   "instagram": "@danielwassenaar"
+  },
+  {
+   "gender": "male",
+   "class": "-80kg",
+   "movement": "squat",
+   "athlete": "Tony D'Agostino",
+   "weight_kg": 270.0,
+   "instagram": "@_dagostino_tony"
+  },
+  {
+   "gender": "male",
+   "class": "-87kg",
+   "movement": "total",
+   "athlete": "Pere Coll",
+   "weight_kg": 584.25,
+   "instagram": "@perecollfdz"
+  },
+  {
+   "gender": "male",
+   "class": "-87kg",
+   "movement": "muscle_up",
+   "athlete": "Pere Coll",
+   "weight_kg": 53.0,
+   "instagram": "@perecollfdz"
+  },
+  {
+   "gender": "male",
+   "class": "-87kg",
+   "movement": "pull_up",
+   "athlete": "Ludovic Adigery",
+   "weight_kg": 120.0,
+   "instagram": "@ludo_adamantium"
+  },
+  {
+   "gender": "male",
+   "class": "-87kg",
+   "movement": "dip",
+   "athlete": "Pere Coll",
+   "weight_kg": 182.5,
+   "instagram": "@perecollfdz"
+  },
+  {
+   "gender": "male",
+   "class": "-87kg",
+   "movement": "squat",
+   "athlete": "Tony D'Agostino",
+   "weight_kg": 275.0,
+   "instagram": "@_dagostino_tony"
+  },
+  {
+   "gender": "male",
+   "class": "-94kg",
+   "movement": "total",
+   "athlete": "Xavier Macias",
+   "weight_kg": 610.0,
+   "instagram": "@xav.macias"
+  },
+  {
+   "gender": "male",
+   "class": "-94kg",
+   "movement": "muscle_up",
+   "athlete": "Xavier Macias",
+   "weight_kg": 44.0,
+   "instagram": "@xav.macias"
+  },
+  {
+   "gender": "male",
+   "class": "-94kg",
+   "movement": "pull_up",
+   "athlete": "Xavier Macias",
+   "weight_kg": 114.0,
+   "instagram": "@xav.macias"
+  },
+  {
+   "gender": "male",
+   "class": "-94kg",
+   "movement": "dip",
+   "athlete": "Badreddine van der Stoel",
+   "weight_kg": 180.25,
+   "instagram": "@badr_vds"
+  },
+  {
+   "gender": "male",
+   "class": "-94kg",
+   "movement": "squat",
+   "athlete": "Xavier Macias",
+   "weight_kg": 292.5,
+   "instagram": "@xav.macias"
+  },
+  {
+   "gender": "male",
+   "class": "-101kg",
+   "movement": "total",
+   "athlete": "Mathew Zlat",
+   "weight_kg": 562.5,
+   "instagram": "@mathewzlat"
+  },
+  {
+   "gender": "male",
+   "class": "-101kg",
+   "movement": "muscle_up",
+   "athlete": "Mathew Zlat",
+   "weight_kg": 37.5,
+   "instagram": "@mathewzlat"
+  },
+  {
+   "gender": "male",
+   "class": "-101kg",
+   "movement": "pull_up",
+   "athlete": "Valerio Naldi",
+   "weight_kg": 103.75,
+   "instagram": "@valerio.naldi"
+  },
+  {
+   "gender": "male",
+   "class": "-101kg",
+   "movement": "dip",
+   "athlete": "Mathew Zlat",
+   "weight_kg": 175.0,
+   "instagram": "@mathewzlat"
+  },
+  {
+   "gender": "male",
+   "class": "-101kg",
+   "movement": "squat",
+   "athlete": "David Klimek",
+   "weight_kg": 280.0,
+   "instagram": "@david_klimek"
+  },
+  {
+   "gender": "male",
+   "class": "+101kg",
+   "movement": "total",
+   "athlete": "Tonio Zeidler",
+   "weight_kg": 577.5,
+   "instagram": "@tonio.zed"
+  },
+  {
+   "gender": "male",
+   "class": "+101kg",
+   "movement": "muscle_up",
+   "athlete": "Patryk Dzieniszewski",
+   "weight_kg": 40.0,
+   "instagram": "@dzieniu_workout"
+  },
+  {
+   "gender": "male",
+   "class": "+101kg",
+   "movement": "pull_up",
+   "athlete": "Valerio Naldi",
+   "weight_kg": 101.25,
+   "instagram": "@valerio.naldi"
+  },
+  {
+   "gender": "male",
+   "class": "+101kg",
+   "movement": "dip",
+   "athlete": "Tonio Zeidler",
+   "weight_kg": 187.5,
+   "instagram": "@tonio.zed"
+  },
+  {
+   "gender": "male",
+   "class": "+101kg",
+   "movement": "squat",
+   "athlete": "Jan Makula",
+   "weight_kg": 310.0,
+   "instagram": "@janmakula"
+  }
+ ]
+}
