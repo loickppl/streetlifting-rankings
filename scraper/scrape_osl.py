@@ -89,7 +89,18 @@ def parse_float(s):
         v = float(s)
     except ValueError:
         return None
-    return v if v > 0 else None  # site uses 0.00 for "unknown"
+    return v if v > 0 else None  # 0.00 means "unknown" (bodyweight, RIS, total)
+
+
+def parse_lift(s):
+    """Movement columns: in All4 every lift is contested, so 0.00 is a real
+    scored zero (bodyweight-only or bombed lift), not a missing value."""
+    s = s.replace(",", ".").strip()
+    try:
+        v = float(s)
+    except ValueError:
+        return None
+    return v if v >= 0 else None
 
 
 def parse_date(s):
@@ -121,10 +132,10 @@ def parse_result_row(cells, cols):
         "class": cell("class") or None,
         "bodyweight": parse_float(cell("bw")),
         "style": cell("style") or None,
-        "muscle_up": parse_float(cell("muscle_up")),
-        "pull_up": parse_float(cell("pull_up")),
-        "dip": parse_float(cell("dip")),
-        "squat": parse_float(cell("squat")),
+        "muscle_up": parse_lift(cell("muscle_up")),
+        "pull_up": parse_lift(cell("pull_up")),
+        "dip": parse_lift(cell("dip")),
+        "squat": parse_lift(cell("squat")),
         "total": parse_float(cell("total")),
         "ris_site": parse_float(cell("ris")),
         "date": parse_date(cell("date")),
