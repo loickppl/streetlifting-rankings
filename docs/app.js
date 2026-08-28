@@ -236,12 +236,13 @@ function rankingRows() {
     const m = /^([+-])(\d+(?:\.\d+)?)kg$/.exec(c || "");
     return m ? parseFloat(m[2]) + (m[1] === "+" ? 0.5 : 0) : Infinity;
   };
-  // effective weight: actual bodyweight, else the class limit (upper bound)
-  const effW = (r) => r.bodyweight ?? classBound(r.class);
+  // equal marks: the lighter weight class wins; within the same class the
+  // better RIS (the weight-adjusted score) decides, then raw bodyweight
   rows.sort((a, b) =>
     (b[metric] - a[metric]) ||
-    (effW(a) - effW(b)) ||
-    ((b.ris ?? -Infinity) - (a.ris ?? -Infinity)));
+    (classBound(a.class) - classBound(b.class)) ||
+    ((b.ris ?? -Infinity) - (a.ris ?? -Infinity)) ||
+    ((a.bodyweight ?? Infinity) - (b.bodyweight ?? Infinity)));
   // a ranking lists each athlete once: keep their best result in the filter scope
   const seen = new Set();
   return rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
