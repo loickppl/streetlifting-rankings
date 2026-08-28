@@ -37,16 +37,17 @@ scraper/
   scrape_finalrep.py   # scrape final-rep.com world records
   aggregate.py         # merge, recompute RIS, build the site JSON files
 data/
-  raw/                 # raw scraped JSON (one file per source)
-  site/                # aggregated output
-docs/                  # static site (GitHub Pages) — reads docs/data/*.json
+  raw/                 # raw per-source staging (needed by the delta merge)
+  site/streetlifting.json  # THE consolidated database: all sources, one file
+docs/                  # static site (GitHub Pages) — reads docs/data/streetlifting.json
 scripts/
   update.sh            # daily cron entrypoint: scrape → aggregate → commit → push
 ```
 
 Plain Python (stdlib + `requests`), plain HTML/CSS/JS — no build step, no framework.
-The JSON files are the "database"; migrating later to a real DB (PostgreSQL, SQLite)
-only requires importing `data/site/performances.json`.
+`data/site/streetlifting.json` is the single consolidated database (meta + athletes
+with full competition histories + records from every source). Migrating later to a
+real DB (PostgreSQL, SQLite) only requires importing that one file.
 
 ## Local usage
 

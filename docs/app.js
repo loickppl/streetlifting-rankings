@@ -137,13 +137,17 @@ function renderHeroStats() {
 
 /* ── data ─────────────────────────────────────────────────── */
 async function loadData() {
-  const [perfs, athletes, records, meta] = await Promise.all(
-    ["performances", "athletes", "records", "meta"].map(n =>
-      fetch(`data/${n}.json`).then(r => r.ok ? r.json() : Promise.reject(new Error(n)))));
-  state.performances = perfs;
-  state.athletes = athletes;
-  state.records = records;
-  state.meta = meta;
+  // single consolidated database (all sources) built by scraper/aggregate.py
+  const db = await fetch("data/streetlifting.json")
+    .then(r => r.ok ? r.json() : Promise.reject(new Error("streetlifting.json")));
+  state.meta = db.meta;
+  state.records = db.records;
+  state.athletes = db.athletes;
+  // flat performance list derived client-side (one row per competition result)
+  state.performances = db.athletes.flatMap(a =>
+    (a.performances || []).map(p => ({
+      athlete_id: a.id, athlete: a.name, country: a.country, gender: a.gender, ...p,
+    })));
 }
 
 /* ── filter widgets ───────────────────────────────────────── */

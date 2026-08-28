@@ -2,12 +2,11 @@
 """
 Aggregate raw scraped data into the JSON files served by the site.
 
-Inputs  : data/raw/osl_athletes.json, data/raw/finalrep_records.json
-Outputs : data/site/athletes.json      — athlete index + full histories
-          data/site/performances.json  — flat list, one row per competition result
-          data/site/records.json       — Final Rep official records + records
-                                         computed from the performance database
-          data/site/meta.json          — freshness + stats
+Inputs  : data/raw/*.json (one raw file per source — staging for the scrapers)
+Output  : data/site/streetlifting.json — single consolidated database:
+          meta + athletes (with embedded competition histories, recomputed RIS)
+          + records from every source (Final Rep official + computed from the
+          OSL performance database). Mirrored to docs/data/ for the site.
 
 RIS (Relative Index for Streetlifting, warisradji.com/ris, 2025 constants):
     RIS = Total * 100 / (A + (K - A) / (1 + Q * exp(-B * (BW - v))))
@@ -55,7 +54,7 @@ def main():
         raise SystemExit("data/raw/osl_athletes.json missing — run scrape_osl.py first")
 
     athletes = []
-    performances = []
+    performances = []   # flat working list (records computation)
 
     for a in osl["athletes"]:
         gender = a.get("gender")
@@ -97,6 +96,11 @@ def main():
             "n_competitions": len(perfs),
             "best": {m: max((p[m] for p in perfs if p.get(m)), default=None) for m in MOVEMENTS},
             "best_ris": max((p["ris"] for p in perfs if p.get("ris")), default=None),
+            "performances": [
+                {k: v for k, v in p.items()
+                 if k not in ("athlete_id", "athlete", "country", "gender")}
+                for p in perfs
+            ],
         })
 
     # Records computed from the OSL performance database:
@@ -144,25 +148,19 @@ def main():
         },
     }
 
+    database = {"meta": meta, "records": records, "athletes": athletes}
+
     SITE.mkdir(parents=True, exist_ok=True)
-    for name, payload in [
-        ("athletes.json", athletes),
-        ("performances.json", performances),
-        ("records.json", records),
-        ("meta.json", meta),
-    ]:
-        (SITE / name).write_text(
-            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-            encoding="utf-8",
-        )
-        print(f"wrote data/site/{name}")
+    out = SITE / "streetlifting.json"
+    out.write_text(json.dumps(database, ensure_ascii=False, separators=(",", ":")),
+                   encoding="utf-8")
+    print(f"wrote {out}")
 
     # The GitHub Pages site reads from docs/data/ — mirror the output there.
     docs_data = ROOT / "docs" / "data"
     docs_data.mkdir(parents=True, exist_ok=True)
-    for name in ["athletes.json", "performances.json", "records.json", "meta.json"]:
-        docs_data.joinpath(name).write_bytes((SITE / name).read_bytes())
-    print("mirrored to docs/data/")
+    docs_data.joinpath("streetlifting.json").write_bytes(out.read_bytes())
+    print("mirrored to docs/data/streetlifting.json")
 
     print(f"{len(athletes)} athletes, {len(performances)} performances, "
           f"{len(records['finalrep'])} finalrep records, {len(records['computed_osl'])} computed records")
