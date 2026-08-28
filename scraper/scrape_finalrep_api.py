@@ -9,16 +9,18 @@ browser session cookie (the `access` JWT) since the login itself is OAuth
 (Google/Apple) and cannot be automated.
 
 ────────────────────────────────────────────────────────────────────────
-AUTH — how to provide the session (token lives ~20 min, auto-refreshed):
+AUTH — how to provide the session (access token lives ~20 min):
   1. Log into https://app.final-rep.com in your browser.
   2. DevTools (F12) → Application → Cookies → https://app.final-rep.com
-     copy the value of the `access` cookie.
-  3. Save it to  data/raw/.finalrep_cookie  as a single line:
-        access=<the-jwt>
+     copy BOTH cookie values: `access` and `refresh`.
+  3. Save them to  data/raw/.finalrep_cookie , one per line:
+        access=<the-access-jwt>
+        refresh=<the-refresh-token>
      (this file is .gitignored — it never leaves your machine).
-The scraper refreshes the token via POST /notifications-api/v1/token before
-it expires and rewrites the cookie file, so a fresh capture is only needed
-if the whole session dies.
+The `access` token is short-lived; the scraper renews it via
+POST /auth-api/v1/refresh using the long-lived `refresh` cookie and rewrites
+the cookie file. With `refresh` present the crawl runs unattended (and from
+cron); without it, only ~20 min of work fits before a re-capture is needed.
 ────────────────────────────────────────────────────────────────────────
 
 Endpoints (all on https://api.final-rep.com, cookie auth):
@@ -77,7 +79,9 @@ class FinalRepClient:
     def __init__(self, cookie_path=COOKIE_PATH):
         self.session = requests.Session()
         self.cookie_path = Path(cookie_path)
-        self.access = self._load_cookie()
+        self.access = None
+        self.refresh_token = None   # long-lived httpOnly `refresh` cookie
+        self._load_cookie()
 
     def _load_cookie(self):
         if not self.cookie_path.exists():
@@ -86,13 +90,21 @@ class FinalRepClient:
         m = re.search(r"access=([^\s;]+)", raw)
         if not m:
             sys.exit(f"{self.cookie_path} must contain 'access=<jwt>'.")
-        return m.group(1)
+        self.access = m.group(1)
+        r = re.search(r"refresh=([^\s;]+)", raw)
+        self.refresh_token = r.group(1) if r else None
 
     def _save_cookie(self):
-        self.cookie_path.write_text(f"access={self.access}\n", encoding="utf-8")
+        lines = [f"access={self.access}"]
+        if self.refresh_token:
+            lines.append(f"refresh={self.refresh_token}")
+        self.cookie_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     def _cookie_header(self):
-        return {"Cookie": f"access={self.access}"}
+        cookies = f"access={self.access}"
+        if self.refresh_token:
+            cookies += f"; refresh={self.refresh_token}"
+        return {"Cookie": cookies}
 
     @staticmethod
     def _jwt_exp(token):
@@ -105,15 +117,28 @@ class FinalRepClient:
             return None
 
     def refresh(self):
-        """Slide the session before the access token expires."""
-        r = self.session.post(f"{API}/notifications-api/v1/token",
-                              headers={**HEADERS, **self._cookie_header()}, timeout=30)
-        # the new access token comes back as a Set-Cookie
-        new = r.cookies.get("access")
-        if new:
-            self.access = new
-            self._save_cookie()
-            return True
+        """Slide the session before the access token expires.
+
+        The app renews via /auth-api/v1/refresh using the long-lived, httpOnly
+        `refresh` cookie; the server replies with fresh `access` (and possibly
+        `refresh`) Set-Cookie headers. We try that first, then a couple of
+        fallbacks. Without a `refresh` cookie in the cookie file this cannot
+        work — recapture including `refresh=`.
+        """
+        for path in ("/auth-api/v1/refresh", "/auth-api/v1/token", "/notifications-api/v1/token"):
+            try:
+                r = self.session.post(API + path,
+                                      headers={**HEADERS, **self._cookie_header()}, timeout=30)
+            except requests.RequestException:
+                continue
+            new = r.cookies.get("access")
+            new_refresh = r.cookies.get("refresh")
+            if new:
+                self.access = new
+                if new_refresh:
+                    self.refresh_token = new_refresh
+                self._save_cookie()
+                return True
         return False
 
     def _maybe_refresh(self):
