@@ -521,3 +521,6 @@ button { font-family: inherit; }
 
 /* record holder nationality flag */
 .record-holder .flag-img { display: inline-block; vertical-align: -2px; margin-right: 7px; }
+
+/* multiple nationalities: flags side by side */
+.flag { gap: 4px; }

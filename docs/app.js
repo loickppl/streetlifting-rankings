@@ -81,6 +81,11 @@ const $ = (s) => document.querySelector(s);
 const t = () => I18N[state.lang];
 const compWord = (n) => n > 1 ? t().competitions_word : t().competitions_word.slice(0, -1);
 
+function flagsOf(row) {
+  const list = row.countries && row.countries.length ? row.countries
+    : (row.country ? [row.country] : []);
+  return list.map(flagEmoji).join(" ");
+}
 function flagEmoji(iso) {
   // Flag images (emoji flags don't render on Windows); alt shows the code.
   if (!iso || iso.length !== 2) return "";
@@ -149,7 +154,9 @@ async function loadData() {
   // flat performance list derived client-side (one row per competition result)
   state.performances = db.athletes.flatMap(a =>
     (a.performances || []).map(p => ({
-      athlete_id: a.id, athlete: a.name, country: a.country, gender: a.gender, ...p,
+      athlete_id: a.id, athlete: a.name, country: a.country,
+      countries: a.countries || (a.country ? [a.country] : []),
+      gender: a.gender, ...p,
     })));
 }
 
@@ -186,7 +193,7 @@ function refreshClassChips() {
 function refreshCountryOptions() {
   const sel = $("#f-country");
   const prev = sel.value;
-  const codes = [...new Set(state.performances.map(p => p.country).filter(Boolean))];
+  const codes = [...new Set(state.performances.flatMap(p => p.countries || (p.country ? [p.country] : [])))];
   let dn = null;
   try { dn = new Intl.DisplayNames([state.lang === "fr" ? "fr" : "en"], { type: "region" }); } catch {}
   const label = (c) => { try { return dn?.of(c) || c; } catch { return c; } };
@@ -216,7 +223,7 @@ function rankingRows() {
   let rows = state.performances.filter(p =>
     p.gender === gender && p[metric] != null &&
     (!klass || p.class === klass) &&
-    (!country || p.country === country) &&
+    (!country || (p.countries || [p.country]).includes(country)) &&
     (!from || (p.date && p.date >= from)) &&
     (!to || (p.date && p.date <= to)) &&
     (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
@@ -234,7 +241,7 @@ function renderPodium(rows) {
     <div class="podium-card p${i + 1}" data-athlete="${esc(p.athlete_id)}">
       <div class="pos">${i + 1}</div>
       <span class="medal">#${i + 1}</span>
-      <div class="who"><span>${flagEmoji(p.country)}</span> ${esc(p.athlete)}</div>
+      <div class="who"><span class="flag">${flagsOf(p)}</span> ${esc(p.athlete)}</div>
       <div class="meta">${esc(p.class ?? "")}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}</div>
       <div class="value">${fmt(p[metric])}<span class="unit">${unit}</span></div>
       <div class="where">${esc(p.competition ?? "")} — ${fmtDate(p.date)}</div>
@@ -287,7 +294,7 @@ function renderRankings() {
     : `<tbody>${shown.map((p, i) => `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
         <td class="rank-cell">${i < 3 ? `<span class="medal-ico">${["🥇","🥈","🥉"][i]}</span>` : i + 1}</td>
         <td class="id-cell">
-          <div class="id-name"><span class="flag">${flagEmoji(p.country)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
+          <div class="id-name"><span class="flag">${flagsOf(p)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
           <div class="id-sub">${subLine(p)}</div>
         </td>
         ${valueCell(p, "muscle_up")}${valueCell(p, "pull_up")}${valueCell(p, "dip")}${valueCell(p, "squat")}
@@ -354,7 +361,7 @@ function renderAthletes() {
       `<th data-sort="${k}" class="${cls} ${state.sort.key === k ? "sorted" : ""}">${t()[label]}</th>`).join("")}</tr></thead>` +
     `<tbody>${rows.map(a => `<tr>
       <td class="id-cell">
-        <div class="id-name"><span class="flag">${flagEmoji(a.country)}</span><span class="athlete-link" data-athlete="${esc(a.id)}">${esc(a.name)}</span></div>
+        <div class="id-name"><span class="flag">${flagsOf(a)}</span><span class="athlete-link" data-athlete="${esc(a.id)}">${esc(a.name)}</span></div>
         <div class="id-sub">${a.n_competitions} ${compWord(a.n_competitions)}</div>
       </td>
       <td class="num mv">${fmt(a.best?.muscle_up)}</td>
@@ -379,7 +386,7 @@ function openAthlete(id) {
   if (a.profile_url) links.push(`<a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a>`);
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
-      <h2>${flagEmoji(a.country)} ${esc(a.name)}</h2>
+      <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
       <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
     </div>
     <div class="athlete-body">

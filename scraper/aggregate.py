@@ -222,6 +222,7 @@ def main():
         gender = a.get("gender")
         athlete_meta[a["id"]] = {
             "id": a["id"], "name": a.get("name"), "country": a.get("country"),
+            "countries": {a["country"]} if a.get("country") else set(),
             "gender": gender, "profile_url": a.get("profile_url"), "instagram": None,
         }
         seen = set()
@@ -342,6 +343,8 @@ def main():
                                          ("country", r.get("country"))):
                         if not owner.get(field) and value:
                             owner[field] = value
+                    if r.get("country"):
+                        owner.setdefault("countries", set()).add(r["country"])
                     # the competition group's gender (Female -57kg...) is more
                     # reliable than OSL's profile field — override on conflict
                     if gender and owner.get("gender") != gender:
@@ -361,6 +364,7 @@ def main():
                 if aid not in athlete_meta:
                     athlete_meta[aid] = {
                         "id": aid, "name": fix_case(r.get("athlete")), "country": r.get("country"),
+                        "countries": {r["country"]} if r.get("country") else set(),
                         "gender": gender, "profile_url": None, "instagram": r.get("instagram"),
                     }
                 if r.get("athlete"):
@@ -370,6 +374,8 @@ def main():
                                  ("country", r.get("country"))):
                 if not meta.get(field) and value:
                     meta[field] = value
+            if r.get("country"):
+                meta.setdefault("countries", set()).add(r["country"])
             if gender and meta.get("gender") != gender:
                 meta["gender"] = gender
             row = {
@@ -490,9 +496,10 @@ def main():
                     continue
                 keep, drop = (a, b) if n_perfs.get(a["id"], 0) >= n_perfs.get(b["id"], 0) else (b, a)
                 if country_conflict:
-                    # trust the profile with the most recent activity
+                    # keep BOTH nationalities; primary = most recently active profile
                     if latest_by_aid.get(drop["id"], "") > latest_by_aid.get(keep["id"], ""):
                         keep["country"] = drop["country"]
+                keep.setdefault("countries", set()).update(drop.get("countries") or set())
                 for field in ("country", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
@@ -550,6 +557,7 @@ def main():
                 keep, drop = (a, b) if n_perfs.get(ai, 0) >= n_perfs.get(bj, 0) else (b, a)
                 if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
                     keep["name"] = drop["name"]   # fuller name wins
+                keep.setdefault("countries", set()).update(drop.get("countries", set()))
                 for field in ("country", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
@@ -693,6 +701,8 @@ def main():
     for keep_id, drop_id in overrides.get("merge_athletes", []):
         if keep_id in athlete_meta and drop_id in athlete_meta:
             ov_redirect[drop_id] = keep_id
+            athlete_meta[keep_id].setdefault("countries", set()).update(
+                athlete_meta[drop_id].get("countries", set()))
             for field in ("country", "gender", "instagram", "profile_url"):
                 if not athlete_meta[keep_id].get(field) and athlete_meta[drop_id].get(field):
                     athlete_meta[keep_id][field] = athlete_meta[drop_id][field]
@@ -720,6 +730,14 @@ def main():
     athletes = []
     for aid, perfs in by_athlete.items():
         meta = athlete_meta[aid]
+        countries = {c for c in (meta.get("countries") or set())
+                     if isinstance(c, str) and len(c) == 2 and c.isalpha()}
+        if meta.get("country") and len(meta["country"]) == 2 and meta["country"].isalpha():
+            countries.add(meta["country"])
+        elif meta.get("country"):
+            meta["country"] = None
+        meta["countries"] = ([meta["country"]] if meta.get("country") else []) + \
+            sorted(c for c in countries if c != meta.get("country"))
         athletes.append({
             **meta,
             "n_competitions": len(perfs),
