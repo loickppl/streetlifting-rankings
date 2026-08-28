@@ -285,7 +285,7 @@ function renderRankings() {
   const body = shown.length === 0
     ? `<tbody><tr><td colspan="9" class="empty-row">${t().no_data}</td></tr></tbody>`
     : `<tbody>${shown.map((p, i) => `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
-        <td class="rank-cell">${i + 1}</td>
+        <td class="rank-cell">${i < 3 ? `<span class="medal-ico">${["🥇","🥈","🥉"][i]}</span>` : i + 1}</td>
         <td class="id-cell">
           <div class="id-name"><span class="flag">${flagEmoji(p.country)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
           <div class="id-sub">${subLine(p)}</div>

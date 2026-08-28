@@ -30,6 +30,12 @@ per weight class or open).
 | Men | 338.0 | 549.0 | 0.11354 | 74.777 | 0.53096 |
 | Women | 164.0 | 270.0 | 0.13776 | 57.855 | 0.37089 |
 
+## Design
+
+The UI follows the design system defined in [`DESIGN.md`](DESIGN.md) — light-first,
+neutral surfaces, a single competition-red accent, data-first typography.
+Any UI change must be reviewed against it (see its §22 checklist).
+
 ## Architecture
 
 ```
