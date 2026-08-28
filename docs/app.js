@@ -152,14 +152,28 @@ function classesFor(gender) {
     .filter(p => p.gender === gender && p.class).map(p => p.class));
   return [...set].sort(classSort);
 }
+// current official weight classes; legacy ones collapse behind a "+N" chip
+const MAIN_CLASSES = {
+  male: ["-66kg", "-73kg", "-80kg", "-87kg", "-94kg", "-101kg", "+101kg"],
+  female: ["-52kg", "-57kg", "-63kg", "-70kg", "+70kg"],
+};
 function refreshClassChips() {
   const wrap = $("#f-class");
   const classes = classesFor(state.gender);
   if (!classes.includes(state.klass)) state.klass = "";
+  const main = (MAIN_CLASSES[state.gender] || []).filter(c => classes.includes(c));
+  const extra = classes.filter(c => !main.includes(c));
+  if (extra.includes(state.klass)) state.showAllClasses = true;
+  const chip = (c) =>
+    `<button class="chip ${state.klass === c ? "active" : ""}" data-value="${esc(c)}">${esc(c)}</button>`;
   wrap.innerHTML =
     `<button class="chip ${state.klass === "" ? "active" : ""}" data-value="">${t().all_classes}</button>` +
-    classes.map(c =>
-      `<button class="chip ${state.klass === c ? "active" : ""}" data-value="${esc(c)}">${esc(c)}</button>`).join("");
+    main.map(chip).join("") +
+    (extra.length
+      ? (state.showAllClasses
+          ? extra.map(chip).join("") + `<button class="chip chip-more" data-more="1">−</button>`
+          : `<button class="chip chip-more" data-more="1">+${extra.length}</button>`)
+      : "");
 }
 function refreshStyleOptions() {
   const sel = $("#f-style");
@@ -437,6 +451,11 @@ function bind() {
   $("#f-class").addEventListener("click", (e) => {
     const btn = e.target.closest(".chip");
     if (!btn) return;
+    if (btn.dataset.more) {
+      state.showAllClasses = !state.showAllClasses;
+      refreshClassChips();
+      return;
+    }
     state.klass = btn.dataset.value;
     $("#f-class").querySelectorAll(".chip").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();

@@ -60,7 +60,12 @@ def main():
     for a in osl["athletes"]:
         gender = a.get("gender")
         perfs = []
+        seen = set()
         for p in a.get("performances", []):
+            key = tuple(sorted(p.items()))
+            if key in seen:      # exact duplicate rows (source glitches)
+                continue
+            seen.add(key)
             ris = ris_score(gender, p.get("bodyweight"), p.get("total"))
             row = {
                 "athlete_id": a["id"],

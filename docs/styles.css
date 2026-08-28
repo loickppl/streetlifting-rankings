@@ -527,3 +527,7 @@ button { font-family: inherit; }
   .controls-row.secondary { flex-direction: column; align-items: stretch; }
   .switch { align-self: flex-start; }
 }
+
+/* overflow chip for legacy weight classes */
+.chip-more { color: var(--ink-faint); border-style: dashed; }
+.chip-more:hover { color: var(--volt); border-color: var(--volt); }
