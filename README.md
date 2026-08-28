@@ -33,7 +33,7 @@ per weight class or open).
 
 ```
 scraper/
-  scrape_osl.py        # scrape rankings.officialstreetlifting.com (athletes + histories)
+  scrape_osl.py        # OSL scraper: --mode full (baseline) / delta (daily, new comps only)
   scrape_finalrep.py   # scrape final-rep.com world records
   aggregate.py         # merge, recompute RIS, build the site JSON files
 data/
@@ -52,12 +52,25 @@ only requires importing `data/site/performances.json`.
 
 ```bash
 pip install -r scraper/requirements.txt
-python3 scraper/scrape_osl.py        # ~5 min, polite crawl
+python3 scraper/scrape_osl.py --mode full   # initial baseline (~1h polite crawl)
+python3 scraper/scrape_osl.py               # daily delta (new/recent competitions only)
 python3 scraper/scrape_finalrep.py
 python3 scraper/aggregate.py
 # serve the site locally:
 python3 -m http.server -d docs 8080
 ```
+
+### Incremental updates (delta)
+
+The daily scrape does **not** recrawl the ~3300 athlete profiles. It:
+1. lists competitions (upcoming + past index, ~10 requests),
+2. scrapes only competitions missing from `data/raw/osl_competitions.json`,
+   plus those with results in the last 45 days (late results / corrections),
+3. merges results into the athlete database; newly discovered athletes get
+   their full profile fetched once.
+
+Typical daily cost: a dozen requests. A monthly full crawl (`--mode full`,
+automatic on the 1st in `update.sh`) resyncs everything to catch edits.
 
 ## Daily refresh (homelab)
 
@@ -65,8 +78,9 @@ python3 -m http.server -d docs 8080
 0 6 * * * /path/to/streetlifting-rankings/scripts/update.sh >> /var/log/streetlifting-update.log 2>&1
 ```
 
-The script scrapes both sources, regenerates the JSON, and pushes only when the data
-changed. GitHub Pages redeploys automatically on push.
+The script runs the delta scrape daily (full resync on the 1st of the month, or
+with `FULL=1`), refreshes Final Rep records, regenerates the JSON, and pushes only
+when the data changed. GitHub Pages redeploys automatically on push.
 
 ## Disclaimer
 
