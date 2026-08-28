@@ -249,7 +249,7 @@ def list_events(client, continents=None):
 #   Calisthenics ONERM   = official "Streetlifting 4 Lift"
 #   FinalRep Underground = same 4-lift format, underground series
 # Reduced formats (Classic 2-lift, 3L) and max-rep (LOR/AMRAP) are excluded.
-STREETLIFTING_TYPES = ["Calisthenics ONERM"]          # ranking sweep
+STREETLIFTING_TYPES = ["Calisthenics ONERM", "FinalRep Underground"]   # ranking sweep
 STREETLIFTING_STAT_TYPES = {"Calisthenics ONERM", "FinalRep Underground"}
 
 
