@@ -277,10 +277,13 @@ def main():
                         owner["name"] = fix_case(r["athlete"])
                 if owner:   # backfill identity fields OSL doesn't always have
                     for field, value in (("instagram", r.get("instagram")),
-                                         ("country", r.get("country")),
-                                         ("gender", gender)):
+                                         ("country", r.get("country"))):
                         if not owner.get(field) and value:
                             owner[field] = value
+                    # the competition group's gender (Female -57kg...) is more
+                    # reliable than OSL's profile field — override on conflict
+                    if gender and owner.get("gender") != gender:
+                        owner["gender"] = gender
                 fr_dupes += 1
                 continue
 
@@ -297,10 +300,11 @@ def main():
                     name_to_id[norm_name(r["athlete"])] = aid
             meta = athlete_meta[aid]
             for field, value in (("instagram", r.get("instagram")),
-                                 ("country", r.get("country")),
-                                 ("gender", gender)):
+                                 ("country", r.get("country"))):
                 if not meta.get(field) and value:
                     meta[field] = value
+            if gender and meta.get("gender") != gender:
+                meta["gender"] = gender
             row = {
                 "athlete_id": aid,
                 "athlete": meta["name"] or r.get("athlete"),
@@ -351,6 +355,15 @@ def main():
     performances = deduped
     if dropped:
         print(f"dropped {dropped} near-duplicate rows (same total within 2 days)")
+
+    # Re-sync row identity from the consolidated athlete record (gender may
+    # have been corrected by Final Rep group data, names/countries backfilled)
+    for row in performances:
+        m = athlete_meta.get(row["athlete_id"])
+        if m:
+            row["athlete"] = m["name"] or row["athlete"]
+            row["country"] = m["country"] or row["country"]
+            row["gender"] = m["gender"] or row["gender"]
 
     # Junk class labels count as "no class" (inference will fill them)
     for row in performances:
