@@ -183,14 +183,6 @@ function refreshClassChips() {
           : `<button class="chip chip-more" data-more="1">+${extra.length}</button>`)
       : "");
 }
-function refreshStyleOptions() {
-  const sel = $("#f-style");
-  const prev = sel.value;
-  const styles = [...new Set(state.performances.map(p => p.style).filter(Boolean))].sort();
-  sel.innerHTML = `<option value="">${t().all_f}</option>` +
-    styles.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
-  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
-}
 
 /* ── rankings ─────────────────────────────────────────────── */
 function dateRange() {
@@ -204,7 +196,6 @@ function dateRange() {
   return [null, null];
 }
 function rankingRows() {
-  const style = $("#f-style").value;
   const q = $("#f-search").value.trim().toLowerCase();
   const bestOnly = $("#f-best").checked;
   const { gender, metric, klass } = state;
@@ -213,7 +204,6 @@ function rankingRows() {
   let rows = state.performances.filter(p =>
     p.gender === gender && p[metric] != null &&
     (!klass || p.class === klass) &&
-    (!style || p.style === style) &&
     (!from || (p.date && p.date >= from)) &&
     (!to || (p.date && p.date <= to)) &&
     (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
@@ -274,7 +264,7 @@ function renderRankings() {
     </td>`;
   };
   const subLine = (p) => {
-    const rest = [p.bodyweight ? `${fmt(p.bodyweight)} kg` : null, p.style]
+    const rest = [p.bodyweight ? `${fmt(p.bodyweight)} kg` : null]
       .filter(Boolean).map(esc).join(" · ");
     const cls = p.class ? `<b>${esc(p.class)}</b>` : "";
     return cls + (cls && rest ? " · " : "") + rest;
@@ -420,7 +410,7 @@ function openAthlete(id) {
           const main = `<tr class="${hasAtt ? "has-attempts" : ""}" ${hasAtt ? `data-attempts="${i}"` : ""}>
             <td class="id-cell">
               <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>
-              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${p.style ? ` · ${esc(p.style)}` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
+              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
             </td>
             <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
             <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
@@ -478,7 +468,7 @@ function bind() {
   $("#lang-toggle").addEventListener("click", () => {
     state.lang = state.lang === "fr" ? "en" : "fr";
     try { localStorage.setItem("sl-lang", state.lang); } catch {}
-    applyI18n(); refreshClassChips(); refreshStyleOptions();
+    applyI18n(); refreshClassChips();
     renderRankings(); renderRecords(); renderAthletes();
   });
 
@@ -502,7 +492,7 @@ function bind() {
     $("#f-class").querySelectorAll(".chip").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();
   });
-  ["#f-style", "#f-top", "#f-best", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
+  ["#f-top", "#f-best", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
   $("#f-period").addEventListener("change", () => {
     const custom = $("#f-period").value === "custom";
     $("#date-from-wrap").classList.toggle("hidden", !custom);
@@ -560,7 +550,6 @@ function bind() {
   }
   applyI18n();
   refreshClassChips();
-  refreshStyleOptions();
   renderRankings();
   renderRecords();
   renderAthletes();

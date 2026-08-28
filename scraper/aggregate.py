@@ -58,11 +58,23 @@ def norm_name(name):
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
-# Final Rep event types kept: 4-movement 1RM streetlifting only
-FR_STYLES = {
-    "Calisthenics ONERM": "All4",
-    "FinalRep Underground": "All4 (Underground)",
-}
+def name_tokens(name):
+    n = norm_name(name)
+    return frozenset(n.split()) if n else frozenset()
+
+
+def names_compatible(a, b):
+    """True when one name's tokens are a subset of the other's
+    (e.g. 'Pere Coll' vs 'Pere Coll Fernandez'). Requires >= 2 common tokens."""
+    ta, tb = name_tokens(a), name_tokens(b)
+    if not ta or not tb:
+        return False
+    return (ta <= tb or tb <= ta) and len(ta & tb) >= 2
+
+
+# Final Rep event types kept: 4-movement 1RM streetlifting only.
+# Underground events are the same All4 format — no distinction kept.
+FR_TYPES = {"Calisthenics ONERM", "FinalRep Underground"}
 FR_CLASS_RE = re.compile(r"^(Male|Female|Men|Women)\s*([+\-]\d+(?:\.\d+)?kg)?", re.I)
 
 
@@ -87,8 +99,23 @@ def main():
     performances = []          # flat rows, all sources
     athlete_meta = {}          # athlete_id -> identity record
 
+    # OSL sometimes holds duplicate athlete profiles whose slug is the same
+    # plus a uuid suffix (truncated name variants) — fold them together.
+    UUID_SUFFIX = re.compile(r"-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
+    osl_athletes = {a["id"]: a for a in osl["athletes"]}
+    for aid in list(osl_athletes):
+        base = UUID_SUFFIX.sub("", aid)
+        if base != aid:
+            twin = osl_athletes.get(base) or osl_athletes.get(base.rstrip("."))
+            if twin and names_compatible(twin.get("name"), osl_athletes[aid].get("name")):
+                twin["performances"] = twin.get("performances", []) + osl_athletes[aid].get("performances", [])
+                names = [n.rstrip(". ") for n in (twin.get("name"), osl_athletes[aid].get("name")) if n]
+                if names:
+                    twin["name"] = max(names, key=len)
+                del osl_athletes[aid]
+
     # ── source 1: Official Streetlifting (athlete histories) ──
-    for a in osl["athletes"]:
+    for a in osl_athletes.values():
         gender = a.get("gender")
         athlete_meta[a["id"]] = {
             "id": a["id"], "name": a.get("name"), "country": a.get("country"),
@@ -110,7 +137,6 @@ def main():
                 "gender": gender,
                 "class": p.get("class"),
                 "bodyweight": p.get("bodyweight"),
-                "style": p.get("style"),
                 "muscle_up": p.get("muscle_up"),
                 "pull_up": p.get("pull_up"),
                 "dip": p.get("dip"),
@@ -129,15 +155,38 @@ def main():
     fr_new = fr_dupes = 0
     if fr_api:
         by_key = {}
+        by_date_total = {}
         for row in performances:
             if row["total"] and row["date"]:
                 by_key[(norm_name(row["athlete"]), row["date"], round(row["total"], 2))] = row
+                by_date_total.setdefault((row["date"], round(row["total"], 2)), []).append(row)
         name_to_id = {norm_name(m["name"]): aid for aid, m in athlete_meta.items() if m["name"]}
 
+        def find_match(r):
+            """Same performance across sources: exact (name, date, total) —
+            or same (date, total) with compatible names (source name variants)."""
+            if not (r.get("date") and r.get("total")):
+                return None
+            key = (norm_name(r.get("athlete")), r["date"], round(r["total"], 2))
+            row = by_key.get(key)
+            if row is not None:
+                return row
+            cands = [x for x in by_date_total.get((r["date"], round(r["total"], 2)), [])
+                     if names_compatible(x["athlete"], r.get("athlete"))]
+            return cands[0] if len(cands) == 1 else None
+
+        def find_athlete_id(name):
+            """Unique athlete whose name is compatible (token subset) with `name`."""
+            aid = name_to_id.get(norm_name(name))
+            if aid:
+                return aid
+            cands = {a for n, a in name_to_id.items()
+                     if names_compatible(n, name)}
+            return cands.pop() if len(cands) == 1 else None
+
         for r in fr_api.get("results", []):
-            style = FR_STYLES.get(r.get("event_type"))
-            if style is None or r.get("disqualified") or not r.get("best"):
-                continue  # not 1RM streetlifting, or no valid lift
+            if r.get("event_type") not in FR_TYPES or r.get("disqualified") or not r.get("best"):
+                continue  # not 4-lift 1RM streetlifting, or no valid lift
             gender, klass = parse_fr_group(r.get("weight_class"))
             best = r["best"]
             extras = {
@@ -147,9 +196,7 @@ def main():
                 "attempts": [[a["movement"], a["attempt"], a["weight"], a["success"]]
                              for a in r.get("attempts", [])],
             }
-            key = (norm_name(r.get("athlete")), r.get("date"),
-                   round(r["total"], 2) if r.get("total") else None)
-            match = by_key.get(key)
+            match = find_match(r)
             if match is not None:
                 match.update({k: v for k, v in extras.items() if v})
                 if extras["ris_official"]:
@@ -162,7 +209,7 @@ def main():
                 continue
 
             # new performance (event not covered by OSL)
-            aid = name_to_id.get(norm_name(r.get("athlete")))
+            aid = find_athlete_id(r.get("athlete"))
             if aid is None:
                 aid = f"fr-{r['athlete_id']}"
                 if aid not in athlete_meta:
@@ -182,7 +229,6 @@ def main():
                 "gender": meta["gender"] or gender,
                 "class": klass,
                 "bodyweight": None,
-                "style": style,
                 "muscle_up": best.get("muscle_up"),
                 "pull_up": best.get("pull_up"),
                 "dip": best.get("dip"),
@@ -198,6 +244,21 @@ def main():
             performances.append(row)
             fr_new += 1
         print(f"finalrep api: {fr_new} new performances, {fr_dupes} merged into OSL rows")
+
+    # An athlete cannot post two results the same day with the same total:
+    # such rows are source-side duplicates — keep the most informative one.
+    def richness(row):
+        return (bool(row.get("attempts")), bool(row.get("place")),
+                sum(1 for v in row.values() if v is not None))
+    best_row = {}
+    for row in performances:
+        k = (row["athlete_id"], row.get("date"), round(row["total"], 2) if row.get("total") else None)
+        if k not in best_row or richness(row) > richness(best_row[k]):
+            best_row[k] = row
+    dropped = len(performances) - len(best_row)
+    performances = list(best_row.values())
+    if dropped:
+        print(f"dropped {dropped} same-day duplicate rows")
 
     # ── athlete records built from the merged rows ──
     by_athlete = {}
