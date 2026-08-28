@@ -333,6 +333,27 @@ def main():
                 computed_places += 1
     print(f"computed {computed_places} missing placements")
 
+    # Underground events have no weight classes — infer the athlete's class
+    # from their nearest-in-time classed performance (display marked as
+    # inferred; class records ignore inferred classes).
+    tmp = {}
+    for row in performances:
+        tmp.setdefault(row["athlete_id"], []).append(row)
+    inferred = 0
+    for rows in tmp.values():
+        classed = [r for r in rows if r.get("class") and r.get("date")]
+        if not classed:
+            continue
+        for r in rows:
+            if not r.get("class") and r.get("date"):
+                nearest = min(classed, key=lambda c: abs(
+                    (int(c["date"][:4]) * 372 + int(c["date"][5:7]) * 31 + int(c["date"][8:10]))
+                    - (int(r["date"][:4]) * 372 + int(r["date"][5:7]) * 31 + int(r["date"][8:10]))))
+                r["class"] = nearest["class"]
+                r["class_inferred"] = True
+                inferred += 1
+    print(f"inferred weight class for {inferred} unclassed performances")
+
     # ── athlete records built from the merged rows ──
     by_athlete = {}
     for row in performances:
@@ -363,7 +384,7 @@ def main():
             value = p.get(movement)
             if not value:
                 continue
-            for klass in (p["class"], "all"):
+            for klass in (None if p.get("class_inferred") else p["class"], "all"):
                 if not klass:
                     continue
                 key = (p["gender"], klass, movement)

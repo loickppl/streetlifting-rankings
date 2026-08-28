@@ -278,7 +278,7 @@ function renderRankings() {
   const subLine = (p) => {
     const rest = [p.bodyweight ? `${fmt(p.bodyweight)} kg` : null]
       .filter(Boolean).map(esc).join(" · ");
-    const cls = p.class ? `<b>${esc(p.class)}</b>` : "";
+    const cls = p.class ? `<b>${p.class_inferred ? "~\u2009" : ""}${esc(p.class)}</b>` : "";
     return cls + (cls && rest ? " · " : "") + rest;
   };
 
@@ -422,7 +422,7 @@ function openAthlete(id) {
           const main = `<tr class="${hasAtt ? "has-attempts" : ""}" ${hasAtt ? `data-attempts="${i}"` : ""}>
             <td class="id-cell">
               <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>
-              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
+              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${p.class_inferred ? "~\u2009" : ""}${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
             </td>
             <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
             <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
