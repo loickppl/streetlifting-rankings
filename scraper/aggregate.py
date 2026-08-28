@@ -203,8 +203,12 @@ def main():
                     match["ris"] = extras["ris_official"]
                 match["source"] = "osl+finalrep"
                 owner = athlete_meta.get(match["athlete_id"])
-                if owner and not owner.get("instagram") and r.get("instagram"):
-                    owner["instagram"] = r["instagram"]
+                if owner:   # backfill identity fields OSL doesn't always have
+                    for field, value in (("instagram", r.get("instagram")),
+                                         ("country", r.get("country")),
+                                         ("gender", gender)):
+                        if not owner.get(field) and value:
+                            owner[field] = value
                 fr_dupes += 1
                 continue
 
@@ -220,8 +224,11 @@ def main():
                 if r.get("athlete"):
                     name_to_id[norm_name(r["athlete"])] = aid
             meta = athlete_meta[aid]
-            if meta.get("instagram") is None and r.get("instagram"):
-                meta["instagram"] = r["instagram"]
+            for field, value in (("instagram", r.get("instagram")),
+                                 ("country", r.get("country")),
+                                 ("gender", gender)):
+                if not meta.get(field) and value:
+                    meta[field] = value
             row = {
                 "athlete_id": aid,
                 "athlete": meta["name"] or r.get("athlete"),
