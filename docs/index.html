@@ -72,6 +72,23 @@
           <select id="f-style"><option value="" data-i18n="all_f">Tous</option></select>
         </label>
         <label class="ctl">
+          <span class="ctl-label" data-i18n="f_period">Période</span>
+          <select id="f-period">
+            <option value="" data-i18n="p_all">Depuis toujours</option>
+            <option value="365">12 mois</option>
+            <option value="730">24 mois</option>
+            <option value="custom" data-i18n="p_custom">Dates…</option>
+          </select>
+        </label>
+        <label class="ctl date-ctl hidden" id="date-from-wrap">
+          <span class="ctl-label" data-i18n="f_from">Du</span>
+          <input id="f-from" type="date">
+        </label>
+        <label class="ctl date-ctl hidden" id="date-to-wrap">
+          <span class="ctl-label" data-i18n="f_to">Au</span>
+          <input id="f-to" type="date">
+        </label>
+        <label class="ctl">
           <span class="ctl-label" data-i18n="f_top">Top</span>
           <select id="f-top">
             <option value="30">30</option>

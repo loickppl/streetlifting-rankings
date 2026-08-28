@@ -555,3 +555,12 @@ button { font-family: inherit; }
 .att small { margin-left: 3px; font-size: 10px; }
 .att.ok { color: var(--ink); border-color: rgba(216,201,163,.5); }
 .att.ko { color: var(--ink-faint); text-decoration: line-through; }
+
+/* date-range filter */
+.date-ctl.hidden { display: none; }
+.date-ctl input[type=date] {
+  background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 8px 10px; font: inherit; font-weight: 500;
+  color-scheme: dark;
+}
+.date-ctl input[type=date]:focus { outline: none; border-color: var(--volt); }

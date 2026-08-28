@@ -10,6 +10,7 @@ const I18N = {
     hero_1: "WORLD", hero_2: "RANKINGS",
     stat_athletes: "Athlètes", stat_perfs: "Performances", stat_records: "Records mondiaux", stat_updated: "Mise à jour",
     f_style: "Style", f_top: "Top", f_search: "Recherche",
+    f_period: "Période", p_all: "Depuis toujours", p_custom: "Dates…", f_from: "Du", f_to: "Au",
     f_best: "Meilleure perf par athlète",
     men: "Hommes", women: "Femmes", all_m: "Tous", all_f: "Tous", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Traction", m_dip: "Dips", m_sq: "Squat",
@@ -36,6 +37,7 @@ const I18N = {
     hero_1: "WORLD", hero_2: "RANKINGS",
     stat_athletes: "Athletes", stat_perfs: "Performances", stat_records: "World records", stat_updated: "Updated",
     f_style: "Style", f_top: "Top", f_search: "Search",
+    f_period: "Period", p_all: "All time", p_custom: "Dates…", f_from: "From", f_to: "To",
     f_best: "Best result per athlete",
     men: "Men", women: "Women", all_m: "All", all_f: "All", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Pull-up", m_dip: "Dip", m_sq: "Squat",
@@ -191,16 +193,29 @@ function refreshStyleOptions() {
 }
 
 /* ── rankings ─────────────────────────────────────────────── */
+function dateRange() {
+  const period = $("#f-period").value;
+  if (period === "custom") return [$("#f-from").value || null, $("#f-to").value || null];
+  if (period && /^\d+$/.test(period)) {
+    const d = new Date(state.meta?.generated_at || Date.now());
+    d.setDate(d.getDate() - parseInt(period, 10));
+    return [d.toISOString().slice(0, 10), null];
+  }
+  return [null, null];
+}
 function rankingRows() {
   const style = $("#f-style").value;
   const q = $("#f-search").value.trim().toLowerCase();
   const bestOnly = $("#f-best").checked;
   const { gender, metric, klass } = state;
 
+  const [from, to] = dateRange();
   let rows = state.performances.filter(p =>
     p.gender === gender && p[metric] != null &&
     (!klass || p.class === klass) &&
     (!style || p.style === style) &&
+    (!from || (p.date && p.date >= from)) &&
+    (!to || (p.date && p.date <= to)) &&
     (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
 
   rows.sort((a, b) => b[metric] - a[metric]);
@@ -487,7 +502,13 @@ function bind() {
     $("#f-class").querySelectorAll(".chip").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();
   });
-  ["#f-style", "#f-top", "#f-best"].forEach(s => $(s).addEventListener("change", renderRankings));
+  ["#f-style", "#f-top", "#f-best", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
+  $("#f-period").addEventListener("change", () => {
+    const custom = $("#f-period").value === "custom";
+    $("#date-from-wrap").classList.toggle("hidden", !custom);
+    $("#date-to-wrap").classList.toggle("hidden", !custom);
+    renderRankings();
+  });
   $("#f-search").addEventListener("input", renderRankings);
 
   segBind("#r-gender", (v) => { state.rGender = v; renderRecords(); });
