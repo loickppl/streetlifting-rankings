@@ -148,12 +148,18 @@ class FinalRepClient:
                 print("  (token refreshed)")
 
     def get(self, path, params=None, retries=3):
+        return self._request("GET", path, params=params, retries=retries)
+
+    def post(self, path, body, retries=3):
+        return self._request("POST", path, json_body=body, retries=retries)
+
+    def _request(self, method, path, params=None, json_body=None, retries=3):
         self._maybe_refresh()
         url = path if path.startswith("http") else API + path
         for attempt in range(retries):
             try:
-                r = self.session.get(url, params=params,
-                                     headers={**HEADERS, **self._cookie_header()}, timeout=30)
+                r = self.session.request(method, url, params=params, json=json_body,
+                                         headers={**HEADERS, **self._cookie_header()}, timeout=40)
                 if r.status_code == 200:
                     return r.json()
                 if r.status_code in (401, 403):
@@ -162,7 +168,7 @@ class FinalRepClient:
                     sys.exit("Session expired and refresh failed — recapture the access cookie.")
                 if r.status_code == 404:
                     return None
-                print(f"  HTTP {r.status_code} {url}", file=sys.stderr)
+                print(f"  HTTP {r.status_code} {method} {url}", file=sys.stderr)
             except requests.RequestException as e:
                 print(f"  error {url}: {e}", file=sys.stderr)
             time.sleep(1.5 * (attempt + 1))
@@ -224,7 +230,58 @@ def list_events(client, continents=None):
         for country in countries:
             harvest(path, {"continent": "", "country": country}, f"{tag}[{country}]")
 
+    # The finished-events feed only reaches ~6 months back. The global ranking
+    # (POST /events/ranking) aggregates best-per-athlete across ALL history and
+    # each entry names its event — so sweeping it surfaces historical event ids.
+    for eid, name in ranking_event_ids(client).items():
+        if eid not in events:
+            events[eid] = {
+                "id": eid, "name": name, "type": None, "state": None,
+                "affiliated": None, "start_date": None, "end_date": None,
+                "location": None, "country": None, "continent": None,
+                "finished": True, "from_ranking": True,
+            }
+    print(f"  + ranking sweep: {len(events)} events total")
     return list(events.values())
+
+
+# 1RM streetlifting event types queried in the ranking sweep
+STREETLIFTING_TYPES = ["Calisthenics ONERM", "Calisthenics ONERM Classic",
+                       "Calisthenics ONERM 3L"]
+# 1RM types accepted from an event's /statistics payload (max-rep excluded)
+STREETLIFTING_STAT_TYPES = {
+    "Calisthenics ONERM", "Calisthenics ONERM Classic", "Calisthenics ONERM 3L",
+    "FinalRep Underground", "FinalRep Underground Classic", "FinalRep Underground 3L",
+}
+
+
+def ranking_event_ids(client):
+    """Sweep POST /events-api/v1/events/ranking over the 1RM event types and
+    paginate to collect every referenced (historical) event id."""
+    event_ids = {}
+    for et in STREETLIFTING_TYPES:
+        offset = 0
+        while True:
+            d = client.post("/events-api/v1/events/ranking", {
+                "event_type": et, "sort_by_ris": False, "finalrep_affiliated": False,
+                "continent": "", "country": "", "limit": 100, "offset": offset,
+                "start_date": "2015-01-01T00:00:00Z", "end_date": "2035-12-31T23:59:59Z",
+            })
+            emb = client.embedded(d) if d else None
+            if not emb:
+                break
+            for x in emb.get("overall", []):
+                if x.get("event_id"):
+                    event_ids[x["event_id"]] = x.get("event_name")
+            for g in emb.get("groups", []):
+                for s in g.get("stats", []):
+                    if s.get("event_id"):
+                        event_ids[s["event_id"]] = s.get("event_name")
+            offset += 100
+            if offset >= (emb.get("max_results") or 0):
+                break
+            time.sleep(DELAY)
+    return event_ids
 
 
 def event_statistics(client, eid):
@@ -304,16 +361,26 @@ def main():
         finished = finished[: args.limit_events]
 
     records = []
+    skipped_maxrep = 0
     for i, ev in enumerate(finished, 1):
         stats = event_statistics(client, ev["id"])
         if not stats:
             print(f"  [{i}/{len(finished)}] {ev['name']}: no statistics")
             time.sleep(DELAY)
             continue
+        etype = stats.get("event_type") or ev.get("type")
+        ev["type"] = etype
+        # keep only 1RM streetlifting; drop max-rep (League of Reps / AMRAP) events
+        if etype not in STREETLIFTING_STAT_TYPES:
+            skipped_maxrep += 1
+            print(f"  [{i}/{len(finished)}] {ev['name']}: skipped ({etype})")
+            time.sleep(DELAY)
+            continue
         rows = parse_statistics(stats, ev)
         records.extend(rows)
-        print(f"  [{i}/{len(finished)}] {ev['name']}: {len(rows)} athlete results")
+        print(f"  [{i}/{len(finished)}] {ev['name']}: {len(rows)} results ({etype})")
         time.sleep(DELAY)
+    print(f"Skipped {skipped_maxrep} non-1RM (max-rep) events")
 
     OUT_PATH.write_text(json.dumps({
         "source": "api.final-rep.com",
