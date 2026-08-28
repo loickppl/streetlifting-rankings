@@ -76,6 +76,7 @@ const state = {
 
 const $ = (s) => document.querySelector(s);
 const t = () => I18N[state.lang];
+const compWord = (n) => n > 1 ? t().competitions_word : t().competitions_word.slice(0, -1);
 
 function flagEmoji(iso) {
   // Flag images (emoji flags don't render on Windows); alt shows the code.
@@ -220,30 +221,44 @@ function renderRankings() {
 
   const metricKey = { muscle_up: "col_mu", pull_up: "col_pu", dip: "col_dip", squat: "col_sq", total: "col_total", ris: "col_ris" }[metric];
   const cols = [
-    ["col_rank", ""], ["col_athlete", ""], ["col_class", ""], ["col_bw", "num"],
-    ["col_style", ""], ["col_mu", "num"], ["col_pu", "num"], ["col_dip", "num"],
-    ["col_sq", "num"], ["col_total", "num"], ["col_ris", "num"], ["col_comp", ""], ["col_date", ""],
+    ["col_rank", ""], ["col_athlete", ""],
+    ["col_mu", "num"], ["col_pu", "num"], ["col_dip", "num"], ["col_sq", "num"],
+    ["col_total", "num"], ["col_ris", "num"], ["col_comp", ""],
   ];
   const thead = `<thead><tr>${cols.map(([k, cls]) =>
     `<th class="${cls} ${k === metricKey ? "sorted" : ""}">${t()[k]}</th>`).join("")}</tr></thead>`;
 
-  const mc = (m) => metric === m ? "metric-cell" : "";
+  const maxVal = shown.length ? shown[0][metric] : 1;
+  const valueCell = (p, m) => {
+    if (m !== metric)
+      return `<td class="num mv">${fmt(p[m])}</td>`;
+    const pct = Math.max(6, Math.round((p[m] / maxVal) * 100));
+    return `<td class="num metric-cell">
+      <div class="metric-val">${fmt(p[m])}</div>
+      <div class="metric-bar" style="width:${pct * 0.62}px"></div>
+    </td>`;
+  };
+  const subLine = (p) => {
+    const rest = [p.bodyweight ? `${fmt(p.bodyweight)} kg` : null, p.style]
+      .filter(Boolean).map(esc).join(" · ");
+    const cls = p.class ? `<b>${esc(p.class)}</b>` : "";
+    return cls + (cls && rest ? " · " : "") + rest;
+  };
+
   const body = shown.length === 0
-    ? `<tbody><tr><td colspan="13" class="empty-row">${t().no_data}</td></tr></tbody>`
-    : `<tbody>${shown.map((p, i) => `<tr>
-        <td><span class="rank-badge ${i < 3 ? "r" + (i + 1) : ""}">${i + 1}</span></td>
-        <td><span class="athlete-link" data-athlete="${esc(p.athlete_id)}"><span class="flag">${flagEmoji(p.country)}</span>${esc(p.athlete)}</span></td>
-        <td class="cell-dim">${esc(p.class ?? "—")}</td>
-        <td class="num cell-dim">${fmt(p.bodyweight)}</td>
-        <td class="cell-faint">${esc(p.style ?? "—")}</td>
-        <td class="num ${mc("muscle_up")}">${fmt(p.muscle_up)}</td>
-        <td class="num ${mc("pull_up")}">${fmt(p.pull_up)}</td>
-        <td class="num ${mc("dip")}">${fmt(p.dip)}</td>
-        <td class="num ${mc("squat")}">${fmt(p.squat)}</td>
-        <td class="num ${mc("total")}">${fmt(p.total)}</td>
-        <td class="num ${mc("ris")}">${fmt(p.ris)}</td>
-        <td class="cell-faint cell-comp" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</td>
-        <td class="cell-faint">${fmtDate(p.date)}</td>
+    ? `<tbody><tr><td colspan="9" class="empty-row">${t().no_data}</td></tr></tbody>`
+    : `<tbody>${shown.map((p, i) => `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
+        <td class="rank-cell">${i + 1}</td>
+        <td class="id-cell">
+          <div class="id-name"><span class="flag">${flagEmoji(p.country)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
+          <div class="id-sub">${subLine(p)}</div>
+        </td>
+        ${valueCell(p, "muscle_up")}${valueCell(p, "pull_up")}${valueCell(p, "dip")}${valueCell(p, "squat")}
+        ${valueCell(p, "total")}${valueCell(p, "ris")}
+        <td class="comp-cell">
+          <div class="comp-name" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</div>
+          <div class="comp-date">${fmtDate(p.date)}</div>
+        </td>
       </tr>`).join("")}</tbody>`;
 
   $("#rankings-table").innerHTML = thead + body;
@@ -314,7 +329,7 @@ function renderAthletes() {
   });
 
   const headers = [
-    ["name", "col_athlete", ""], ["n", "col_ncomp", "num"], ["muscle_up", "col_mu", "num"],
+    ["name", "col_athlete", ""], ["muscle_up", "col_mu", "num"],
     ["pull_up", "col_pu", "num"], ["dip", "col_dip", "num"], ["squat", "col_sq", "num"],
     ["total", "col_total", "num"], ["ris", "col_best_ris", "num"],
   ];
@@ -322,14 +337,16 @@ function renderAthletes() {
     `<thead><tr>${headers.map(([k, label, cls]) =>
       `<th data-sort="${k}" class="${cls} ${state.sort.key === k ? "sorted" : ""}">${t()[label]}</th>`).join("")}</tr></thead>` +
     `<tbody>${rows.map(a => `<tr>
-      <td><span class="athlete-link" data-athlete="${esc(a.id)}"><span class="flag">${flagEmoji(a.country)}</span>${esc(a.name)}</span></td>
-      <td class="num cell-dim">${a.n_competitions}</td>
-      <td class="num">${fmt(a.best?.muscle_up)}</td>
-      <td class="num">${fmt(a.best?.pull_up)}</td>
-      <td class="num">${fmt(a.best?.dip)}</td>
-      <td class="num">${fmt(a.best?.squat)}</td>
-      <td class="num metric-cell">${fmt(a.best?.total)}</td>
-      <td class="num">${fmt(a.best_ris)}</td>
+      <td class="id-cell">
+        <div class="id-name"><span class="flag">${flagEmoji(a.country)}</span><span class="athlete-link" data-athlete="${esc(a.id)}">${esc(a.name)}</span></div>
+        <div class="id-sub">${a.n_competitions} ${compWord(a.n_competitions)}</div>
+      </td>
+      <td class="num mv">${fmt(a.best?.muscle_up)}</td>
+      <td class="num mv">${fmt(a.best?.pull_up)}</td>
+      <td class="num mv">${fmt(a.best?.dip)}</td>
+      <td class="num mv">${fmt(a.best?.squat)}</td>
+      <td class="num strong-val">${fmt(a.best?.total)}</td>
+      <td class="num mv">${fmt(a.best_ris)}</td>
     </tr>`).join("")}</tbody>`;
 }
 
@@ -344,7 +361,7 @@ function openAthlete(id) {
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
       <h2>${flagEmoji(a.country)} ${esc(a.name)}</h2>
-      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${t().competitions_word} · <a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a></div>
+      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)} · <a href="${esc(a.profile_url)}" target="_blank" rel="noopener">${t().view_profile}</a></div>
     </div>
     <div class="athlete-body">
       <div class="bests">
@@ -353,22 +370,22 @@ function openAthlete(id) {
         <div class="best-chip"><div class="v">${fmt(a.best_ris)}</div><div class="l">RIS</div></div>
       </div>
       <h3>${t().history}</h3>
-      <div class="table-card"><div class="table-scroll"><table class="table"><thead><tr>
-        <th>${t().col_date}</th><th>${t().col_comp}</th><th>${t().col_class}</th>
-        <th class="num">${t().col_bw}</th><th>${t().col_style}</th>
+      <div class="table-scroll"><table class="table compact"><thead><tr>
+        <th>${t().col_comp}</th>
         <th class="num">${t().col_mu}</th><th class="num">${t().col_pu}</th>
         <th class="num">${t().col_dip}</th><th class="num">${t().col_sq}</th>
         <th class="num">${t().col_total}</th><th class="num">${t().col_ris}</th>
       </tr></thead><tbody>
         ${perfs.map(p => `<tr>
-          <td class="cell-faint">${fmtDate(p.date)}</td><td class="cell-dim cell-comp" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</td>
-          <td class="cell-dim">${esc(p.class ?? "—")}</td><td class="num cell-dim">${fmt(p.bodyweight)}</td>
-          <td class="cell-faint">${esc(p.style ?? "—")}</td>
-          <td class="num">${fmt(p.muscle_up)}</td><td class="num">${fmt(p.pull_up)}</td>
-          <td class="num">${fmt(p.dip)}</td><td class="num">${fmt(p.squat)}</td>
-          <td class="num metric-cell">${fmt(p.total)}</td><td class="num">${fmt(p.ris)}</td>
+          <td class="id-cell">
+            <div class="comp-name" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</div>
+            <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${p.style ? ` · ${esc(p.style)}` : ""}</div>
+          </td>
+          <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
+          <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
+          <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${fmt(p.ris)}</td>
         </tr>`).join("")}
-      </tbody></table></div></div>
+      </tbody></table></div>
     </div>`;
   $("#modal").classList.remove("hidden");
   $(".modal-box").scrollTop = 0;
