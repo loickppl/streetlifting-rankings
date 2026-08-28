@@ -345,6 +345,7 @@ def main():
                             owner[field] = value
                     if r.get("country"):
                         owner.setdefault("countries", set()).add(r["country"])
+                        owner["country_fr"] = r["country"]   # Final Rep = authority
                     # the competition group's gender (Female -57kg...) is more
                     # reliable than OSL's profile field — override on conflict
                     if gender and owner.get("gender") != gender:
@@ -364,6 +365,7 @@ def main():
                 if aid not in athlete_meta:
                     athlete_meta[aid] = {
                         "id": aid, "name": fix_case(r.get("athlete")), "country": r.get("country"),
+                        "country_fr": r.get("country"),
                         "countries": {r["country"]} if r.get("country") else set(),
                         "gender": gender, "profile_url": None, "instagram": r.get("instagram"),
                     }
@@ -376,6 +378,7 @@ def main():
                     meta[field] = value
             if r.get("country"):
                 meta.setdefault("countries", set()).add(r["country"])
+                meta["country_fr"] = r["country"]   # Final Rep = authority
             if gender and meta.get("gender") != gender:
                 meta["gender"] = gender
             row = {
@@ -500,7 +503,7 @@ def main():
                     if latest_by_aid.get(drop["id"], "") > latest_by_aid.get(keep["id"], ""):
                         keep["country"] = drop["country"]
                 keep.setdefault("countries", set()).update(drop.get("countries") or set())
-                for field in ("country", "gender", "instagram", "profile_url"):
+                for field in ("country", "country_fr", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
                 redirect[drop["id"]] = keep["id"]
@@ -558,7 +561,7 @@ def main():
                 if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
                     keep["name"] = drop["name"]   # fuller name wins
                 keep.setdefault("countries", set()).update(drop.get("countries", set()))
-                for field in ("country", "gender", "instagram", "profile_url"):
+                for field in ("country", "country_fr", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
                 redirect[drop["id"]] = keep["id"]
@@ -703,7 +706,7 @@ def main():
             ov_redirect[drop_id] = keep_id
             athlete_meta[keep_id].setdefault("countries", set()).update(
                 athlete_meta[drop_id].get("countries", set()))
-            for field in ("country", "gender", "instagram", "profile_url"):
+            for field in ("country", "country_fr", "gender", "instagram", "profile_url"):
                 if not athlete_meta[keep_id].get(field) and athlete_meta[drop_id].get(field):
                     athlete_meta[keep_id][field] = athlete_meta[drop_id][field]
             del athlete_meta[drop_id]
@@ -723,6 +726,19 @@ def main():
                     if "name" in fields:
                         row["athlete"] = fields["name"]
 
+    # Final Rep nationality is the source of truth: when present it replaces
+    # everything else (dual nationality only remains for athletes Final Rep
+    # doesn't know).
+    for m in athlete_meta.values():
+        cf = m.get("country_fr")
+        if cf and isinstance(cf, str) and len(cf) == 2 and cf.isalpha():
+            m["country"] = cf
+            m["countries"] = {cf}
+    for row in performances:
+        m = athlete_meta.get(row["athlete_id"])
+        if m and m.get("country_fr"):
+            row["country"] = m["country"]
+
     # ── athlete records built from the merged rows ──
     by_athlete = {}
     for row in performances:
@@ -738,6 +754,7 @@ def main():
             meta["country"] = None
         meta["countries"] = ([meta["country"]] if meta.get("country") else []) + \
             sorted(c for c in countries if c != meta.get("country"))
+        meta.pop("country_fr", None)
         athletes.append({
             **meta,
             "n_competitions": len(perfs),
