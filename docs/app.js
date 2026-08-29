@@ -11,7 +11,7 @@ const I18N = {
     stat_athletes: "Athlètes", stat_perfs: "Performances", stat_records: "Records mondiaux", stat_updated: "Mise à jour",
     f_style: "Style", f_top: "Top", f_search: "Recherche",
     f_period: "Période", p_all: "Depuis toujours", p_custom: "Dates…", f_from: "Du", f_to: "Au",
-    f_country: "Pays",
+    f_country: "Pays", world_records: "Monde (WR)",
     men: "Hommes", women: "Femmes", all_m: "Tous", all_f: "Tous", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Traction", m_dip: "Dips", m_sq: "Squat",
     ph_search: "Athlète, pays, compétition…", ph_search_a: "Nom, pays…",
@@ -39,7 +39,7 @@ const I18N = {
     stat_athletes: "Athletes", stat_perfs: "Performances", stat_records: "World records", stat_updated: "Updated",
     f_style: "Style", f_top: "Top", f_search: "Search",
     f_period: "Period", p_all: "All time", p_custom: "Dates…", f_from: "From", f_to: "To",
-    f_country: "Country",
+    f_country: "Country", world_records: "World (WR)",
     men: "Men", women: "Women", all_m: "All", all_f: "All", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Pull-up", m_dip: "Dip", m_sq: "Squat",
     ph_search: "Athlete, country, competition…", ph_search_a: "Name, country…",
@@ -193,16 +193,17 @@ function refreshClassChips() {
 }
 
 function refreshCountryOptions() {
-  const sel = $("#f-country");
-  const prev = sel.value;
   const codes = [...new Set(state.performances.flatMap(p => p.countries || (p.country ? [p.country] : [])))];
   let dn = null;
   try { dn = new Intl.DisplayNames([state.lang === "fr" ? "fr" : "en"], { type: "region" }); } catch {}
   const label = (c) => { try { return dn?.of(c) || c; } catch { return c; } };
   const opts = codes.map(c => [c, label(c)]).sort((a, b) => a[1].localeCompare(b[1], state.lang));
-  sel.innerHTML = `<option value="">${t().all_m}</option>` +
-    opts.map(([c, l]) => `<option value="${esc(c)}">${esc(l)}</option>`).join("");
-  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  const optHtml = opts.map(([c, l]) => `<option value="${esc(c)}">${esc(l)}</option>`).join("");
+  for (const [sel, first] of [[$("#f-country"), t().all_m], [$("#r-country"), t().world_records]]) {
+    const prev = sel.value;
+    sel.innerHTML = `<option value="">${first}</option>` + optHtml;
+    if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+  }
 }
 
 /* ── rankings ─────────────────────────────────────────────── */
@@ -323,16 +324,45 @@ function renderRankings() {
 }
 
 /* ── records ──────────────────────────────────────────────── */
+function nationalRecords(gender, country) {
+  // best mark per (class, movement) among the country's athletes — same
+  // policy as the aggregator (inferred classes kept, marked ~)
+  const best = {};
+  for (const p of state.performances) {
+    if (p.gender !== gender) continue;
+    if (!(p.countries || (p.country ? [p.country] : [])).includes(country)) continue;
+    for (const m of ["muscle_up", "pull_up", "dip", "squat", "total", "ris"]) {
+      const v = p[m];
+      if (!v) continue;
+      for (const c of [p.class, "all"]) {
+        if (!c) continue;
+        const k = c + "|" + m;
+        if (!best[k] || v > best[k].value) best[k] = {
+          gender, class: c, movement: m, value: v,
+          athlete: p.athlete, athlete_id: p.athlete_id, country: p.country,
+          class_inferred: (c !== "all" && p.class_inferred) || null,
+          estimated: (m === "ris" && p.ris_est) || null,
+        };
+      }
+    }
+  }
+  return Object.values(best);
+}
+
 function renderRecords() {
   const grid = $("#records-grid");
   const mn = t().metric_names;
-  const recs = (state.records.unified || []).filter(r => r.gender === state.rGender);
+  const country = $("#r-country").value;
+  const recs = country
+    ? nationalRecords(state.rGender, country)
+    : (state.records.unified || []).filter(r => r.gender === state.rGender);
+  const tag = country ? esc(country) : "WR";
   const byClass = {};
   recs.forEach(r => (byClass[r.class] ??= []).push(r));
 
   grid.innerHTML = Object.keys(byClass).sort(classSort).map(c => `
     <div class="record-card">
-      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">WR</span></div>
+      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">${tag}</span></div>
       <div class="record-rows">
         ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
           const r = byClass[c].find(x => x.movement === m);
@@ -538,6 +568,7 @@ function bind() {
   $("#f-search").addEventListener("input", renderRankings);
 
   segBind("#r-gender", (v) => { state.rGender = v; renderRecords(); });
+  $("#r-country").addEventListener("change", renderRecords);
 
   segBind("#a-gender", (v) => { state.aGender = v; renderAthletes(); });
   $("#a-search").addEventListener("input", renderAthletes);
