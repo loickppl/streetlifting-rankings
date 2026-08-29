@@ -149,6 +149,7 @@ button { font-family: inherit; }
 .controls { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
 .controls-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .controls-row.secondary { gap: 16px; align-items: flex-end; }
+.controls-row.secondary .seg { margin-bottom: 1px; }
 
 /* segmented (structural switches: gender, source) */
 .seg {
