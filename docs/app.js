@@ -413,11 +413,8 @@ function openAthlete(id) {
   if (a.instagram) links.push(`<a href="https://instagram.com/${esc(a.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(a.instagram)}</a>`);
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
-      <div class="athlete-id">
-        <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
-        <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
-      </div>
-      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+      <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
+      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
     </div>
     <div class="athlete-body">
       <div class="bests">
@@ -473,6 +470,7 @@ function openAthlete(id) {
   $("#modal").classList.remove("hidden");
   lockBody();
   $(".modal-box").scrollTop = 0;
+  $("#modal-close").style.transform = "";
 }
 
 /* ── events ───────────────────────────────────────────────── */
@@ -568,6 +566,9 @@ function bind() {
   $("#modal").addEventListener("click", (e) => {
     if (e.target === $("#modal") || e.target.closest("#modal-close")) closeModal();
   });
+  $(".modal-box").addEventListener("scroll", () => {
+    $("#modal-close").style.transform = `translateY(${$(".modal-box").scrollTop}px)`;
+  }, { passive: true });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 }
 
