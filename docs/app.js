@@ -388,6 +388,20 @@ function renderAthletes() {
 }
 
 /* ── athlete modal ────────────────────────────────────────── */
+// iOS Safari ignores overflow:hidden on body — pin it with position:fixed
+// while the modal is open, then restore the scroll position.
+let scrollLockY = 0;
+function lockBody() {
+  scrollLockY = window.scrollY;
+  document.body.style.top = `-${scrollLockY}px`;
+  document.body.classList.add("modal-open");
+}
+function unlockBody() {
+  document.body.classList.remove("modal-open");
+  document.body.style.top = "";
+  window.scrollTo(0, scrollLockY);
+}
+
 function openAthlete(id) {
   const a = state.athletes.find(x => x.id === id);
   if (!a) return;
@@ -454,7 +468,7 @@ function openAthlete(id) {
       </tbody></table></div>
     </div>`;
   $("#modal").classList.remove("hidden");
-  document.body.classList.add("modal-open");
+  lockBody();
   $(".modal-box").scrollTop = 0;
 }
 
@@ -546,7 +560,7 @@ function bind() {
   });
   const closeModal = () => {
     $("#modal").classList.add("hidden");
-    document.body.classList.remove("modal-open");
+    unlockBody();
   };
   $("#modal-close").addEventListener("click", closeModal);
   $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) closeModal(); });

@@ -531,5 +531,11 @@ button { font-family: inherit; }
 /* estimated total (sum of all-time PRs) — visually secondary to the real total */
 .best-chip.est .v { color: var(--ink-2); }
 
-/* page locked while the athlete modal is open */
-body.modal-open { overflow: hidden; }
+/* page locked while the athlete modal is open (position:fixed for iOS) */
+body.modal-open {
+  position: fixed;
+  left: 0; right: 0; width: 100%;
+  overflow: hidden;
+}
+.modal { overscroll-behavior: contain; touch-action: none; }
+.modal-box { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y pinch-zoom; }
