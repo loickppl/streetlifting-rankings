@@ -454,6 +454,7 @@ function openAthlete(id) {
       </tbody></table></div>
     </div>`;
   $("#modal").classList.remove("hidden");
+  document.body.classList.add("modal-open");
   $(".modal-box").scrollTop = 0;
 }
 
@@ -543,9 +544,13 @@ function bind() {
     const detail = $(`tr[data-attempts-detail="${row.dataset.attempts}"]`);
     if (detail) detail.classList.toggle("hidden");
   });
-  $("#modal-close").addEventListener("click", () => $("#modal").classList.add("hidden"));
-  $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) $("#modal").classList.add("hidden"); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#modal").classList.add("hidden"); });
+  const closeModal = () => {
+    $("#modal").classList.add("hidden");
+    document.body.classList.remove("modal-open");
+  };
+  $("#modal-close").addEventListener("click", closeModal);
+  $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) closeModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 }
 
 /* ── init ─────────────────────────────────────────────────── */

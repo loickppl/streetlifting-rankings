@@ -530,3 +530,6 @@ button { font-family: inherit; }
 
 /* estimated total (sum of all-time PRs) — visually secondary to the real total */
 .best-chip.est .v { color: var(--ink-2); }
+
+/* page locked while the athlete modal is open */
+body.modal-open { overflow: hidden; }
