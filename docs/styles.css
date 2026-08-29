@@ -431,15 +431,24 @@ button { font-family: inherit; }
   box-shadow: 0 12px 40px rgba(23, 23, 23, .14);
   max-width: 1000px; width: 100%; max-height: 86vh; overflow: auto;
   position: relative;
+  display: flex; flex-direction: column;
 }
 .modal-close {
-  position: absolute; top: 14px; right: 14px; z-index: 2;
-  background: var(--bg); border: 1px solid var(--border); color: var(--ink);
-  border-radius: var(--r-md); width: 32px; height: 32px; cursor: pointer;
-  font-size: 13px;
-  transition: border-color .12s;
+  /* sticky inside the scrolling panel: follows the scroll, stays visible */
+  position: sticky;
+  top: 12px;
+  align-self: flex-end;
+  margin: 12px 12px 0 0;
+  z-index: 5;
+  flex: 0 0 auto;
+  background: rgba(255, 255, 255, .85);
+  backdrop-filter: blur(4px);
+  border: 1px solid var(--line-strong, #d5d5d2); color: var(--ink);
+  border-radius: var(--r-md); width: 36px; height: 36px; cursor: pointer;
+  font-size: 14px;
+  transition: border-color .12s, background .12s;
 }
-.modal-close:hover { border-color: var(--ink); }
+.modal-close:hover { border-color: var(--ink); background: rgba(255, 255, 255, .95); }
 .athlete-head {
   padding: 30px 30px 20px;
   border-bottom: 1px solid var(--border);
