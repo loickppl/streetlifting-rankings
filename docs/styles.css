@@ -431,29 +431,24 @@ button { font-family: inherit; }
   box-shadow: 0 12px 40px rgba(23, 23, 23, .14);
   max-width: 1000px; width: 100%; max-height: 86vh; overflow: auto;
   position: relative;
-  display: flex; flex-direction: column;
 }
 .modal-close {
-  /* sticky inside the scrolling panel: follows the scroll, stays visible */
-  position: sticky;
-  top: 12px;
-  align-self: flex-end;
-  margin: 12px 12px 0 0;
-  z-index: 5;
   flex: 0 0 auto;
-  background: rgba(255, 255, 255, .85);
-  backdrop-filter: blur(4px);
-  border: 1px solid var(--line-strong, #d5d5d2); color: var(--ink);
-  border-radius: var(--r-md); width: 36px; height: 36px; cursor: pointer;
-  font-size: 14px;
-  transition: border-color .12s, background .12s;
+  margin-top: 4px;
+  background: var(--bg); border: 1px solid var(--border); color: var(--ink-2);
+  border-radius: var(--r-md); width: 34px; height: 34px; cursor: pointer;
+  font-size: 14px; line-height: 1;
+  transition: border-color .12s, color .12s;
 }
-.modal-close:hover { border-color: var(--ink); background: rgba(255, 255, 255, .95); }
+.modal-close:hover { border-color: var(--ink); color: var(--ink); }
 .athlete-head {
-  padding: 30px 30px 20px;
+  padding: 22px 20px 18px 26px;
   border-bottom: 1px solid var(--border);
   background: none;
+  display: flex; align-items: flex-start; gap: 12px;
 }
+.athlete-id { flex: 1; min-width: 0; }
+.athlete-head h2 { flex-wrap: wrap; }
 .athlete-head h2 {
   margin: 0;
   font-weight: 900;
@@ -466,13 +461,25 @@ button { font-family: inherit; }
 .athlete-body { padding: 22px 30px 30px; }
 
 /* personal records: plain stat row, hairline separated */
-.bests { display: flex; flex-wrap: wrap; margin-bottom: 26px; }
-.best-chip {
-  background: none; border: none; border-right: 1px solid var(--border);
-  padding: 2px 26px 2px 0; margin: 6px 26px 6px 0;
-  text-align: left; border-radius: 0;
+.bests {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: 26px;
 }
-.best-chip:last-child { border-right: none; }
+@media (max-width: 640px) { .bests { grid-template-columns: repeat(4, 1fr); } }
+.best-chip {
+  background: var(--bg);
+  padding: 13px 12px; text-align: left; border: none; border-radius: 0; margin: 0;
+  border-right: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+/* first row has no top border */
+.best-chip:nth-child(-n+7) { border-top: none; }
+@media (max-width: 640px) { .best-chip:nth-child(-n+4) { border-top: none; } .best-chip:nth-child(n+5) { border-top: 1px solid var(--border); } }
+.best-chip .v { white-space: nowrap; }
 .best-chip .v {
   font-weight: 800; font-size: 22px; line-height: 1.1;
   color: var(--ink); font-variant-numeric: tabular-nums; letter-spacing: -.01em;

@@ -413,8 +413,11 @@ function openAthlete(id) {
   if (a.instagram) links.push(`<a href="https://instagram.com/${esc(a.instagram.replace(/^@/, ""))}" target="_blank" rel="noopener">${esc(a.instagram)}</a>`);
   $("#modal-content").innerHTML = `
     <div class="athlete-head">
-      <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
-      <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
+      <div class="athlete-id">
+        <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
+        <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
+      </div>
+      <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
     </div>
     <div class="athlete-body">
       <div class="bests">
@@ -562,8 +565,9 @@ function bind() {
     $("#modal").classList.add("hidden");
     unlockBody();
   };
-  $("#modal-close").addEventListener("click", closeModal);
-  $("#modal").addEventListener("click", (e) => { if (e.target === $("#modal")) closeModal(); });
+  $("#modal").addEventListener("click", (e) => {
+    if (e.target === $("#modal") || e.target.closest("#modal-close")) closeModal();
+  });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 }
 
