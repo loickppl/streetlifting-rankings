@@ -199,6 +199,9 @@ def main():
     if osl is None:
         raise SystemExit("data/raw/osl_athletes.json missing — run scrape_osl.py first")
 
+    overrides = json.loads((ROOT / "data" / "overrides.json").read_text(encoding="utf-8")) \
+        if (ROOT / "data" / "overrides.json").exists() else {}
+
     performances = []          # flat rows, all sources
     athlete_meta = {}          # athlete_id -> identity record
 
@@ -420,6 +423,27 @@ def main():
             fr_new += 1
         print(f"finalrep api: {fr_new} new performances, {fr_dupes} merged into OSL rows")
 
+
+    # Per-performance corrections (source published wrong numbers):
+    # match by athlete id or compatible name + competition substring (+date).
+    fixed_perfs = 0
+    for ov in overrides.get("performances", []):
+        for row in performances:
+            if ov.get("athlete") and row["athlete_id"] != ov["athlete"] \
+                    and not names_compatible(row.get("athlete"), ov.get("athlete_name")):
+                if row["athlete_id"] != ov["athlete"]:
+                    continue
+            if ov.get("competition") and ov["competition"].lower() not in (row.get("competition") or "").lower():
+                continue
+            if ov.get("date") and row.get("date") != ov["date"]:
+                continue
+            row.update(ov.get("set", {}))
+            if "total" in ov.get("set", {}):
+                row["ris"] = None          # recomputed/estimated downstream
+                row["ris_site"] = None
+            fixed_perfs += 1
+    if fixed_perfs:
+        print(f"applied {fixed_perfs} performance overrides")
 
     # OSL marks some female athletes as male (source-side profile errors).
     # Two corrections, applied conservatively:
@@ -714,8 +738,6 @@ def main():
         print(f"dropped {dropped} near-duplicate rows (same total within 10 days)")
 
     # ── manual overrides (data/overrides.json) — the human wins ──
-    overrides = json.loads((ROOT / "data" / "overrides.json").read_text(encoding="utf-8")) \
-        if (ROOT / "data" / "overrides.json").exists() else {}
     ov_redirect = {}
     for keep_id, drop_id in overrides.get("merge_athletes", []):
         if keep_id in athlete_meta and drop_id in athlete_meta:
