@@ -752,11 +752,30 @@ def main():
             ris_estimated += 1
     print(f"estimated RIS for {ris_estimated} performances (nearest bodyweight or class limit)")
 
-    # An athlete cannot post two results with the same total within 10 days:
-    # such rows are source-side duplicates — keep the most informative one.
+    # An athlete cannot post two results with the same total within 10 days —
+    # and a result repeated on the same day+month with the year off by one
+    # and every lift identical is the same record misdated by a source.
     def richness(row):
         return (bool(row.get("attempts")), bool(row.get("place")),
                 sum(1 for v in row.values() if v is not None))
+
+    def sig(row):
+        return tuple(round(row[m], 2) if row.get(m) is not None else None
+                     for m in ("muscle_up", "pull_up", "dip", "squat"))
+
+    def same_result(a, b):
+        if not (a.get("date") and b.get("date")):
+            return False
+        da = int(a["date"][:4]) * 372 + int(a["date"][5:7]) * 31 + int(a["date"][8:10])
+        db = int(b["date"][:4]) * 372 + int(b["date"][5:7]) * 31 + int(b["date"][8:10])
+        if abs(da - db) <= 10:
+            return True
+        # year typo: same day+month, one year apart, identical lifts
+        return (a["date"][5:] == b["date"][5:]
+                and abs(int(a["date"][:4]) - int(b["date"][:4])) == 1
+                and sig(a) == sig(b)
+                and sum(v is not None for v in sig(a)) >= 3)
+
     groups = {}
     for row in performances:
         groups.setdefault((row["athlete_id"],
@@ -766,9 +785,7 @@ def main():
         rows.sort(key=lambda x: x.get("date") or "")
         kept = []
         for row in rows:
-            near = next((k for k in kept if row.get("date") and k.get("date")
-                         and abs((int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10]))
-                                 - (int(k["date"][:4]) * 372 + int(k["date"][5:7]) * 31 + int(k["date"][8:10]))) <= 10), None)
+            near = next((k for k in kept if same_result(row, k)), None)
             if near is None:
                 kept.append(row)
             else:
@@ -778,7 +795,7 @@ def main():
         deduped.extend(kept)
     performances = deduped
     if dropped:
-        print(f"dropped {dropped} near-duplicate rows (same total within 10 days)")
+        print(f"dropped {dropped} duplicate rows (near dates or year-typo twins)")
 
     # ── manual overrides (data/overrides.json) — the human wins ──
     ov_redirect = {}
