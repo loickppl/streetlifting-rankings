@@ -6,7 +6,7 @@ const MOVEMENTS = ["muscle_up", "pull_up", "dip", "squat"];
 const I18N = {
   fr: {
     tab_rankings: "Classements", tab_records: "Records", tab_athletes: "Athlètes",
-    hero_kicker: "Records mondiaux · compétitions officielles",
+    hero_kicker: "Streetlifting 4 mouvements · compétitions officielles",
     hero_1: "WORLD", hero_2: "RANKINGS",
     stat_athletes: "Athlètes", stat_perfs: "Performances", stat_records: "Records mondiaux", stat_updated: "Mise à jour",
     f_style: "Style", f_top: "Top", f_search: "Recherche",
@@ -28,13 +28,13 @@ const I18N = {
     attempts_hint: "voir les tentatives",
     competitions_word: "compétitions",
     footer_src: `Sources : <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS : <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
-    footer_disc: "Projet communautaire non affilié. Données agrégées automatiquement depuis des sources publiques.",
+    footer_disc: "Seules les performances validées en compétition officielle 4 mouvements (muscle-up, traction, dips, squat) sont recensées. Projet communautaire non affilié — données agrégées automatiquement depuis des sources publiques.",
     updated: "Données du",
     metric_names: { total: "Total", ris: "RIS", muscle_up: "Muscle-up", pull_up: "Traction", dip: "Dips", squat: "Squat" },
   },
   en: {
     tab_rankings: "Rankings", tab_records: "Records", tab_athletes: "Athletes",
-    hero_kicker: "World records · official competitions",
+    hero_kicker: "4-lift streetlifting · official competitions",
     hero_1: "WORLD", hero_2: "RANKINGS",
     stat_athletes: "Athletes", stat_perfs: "Performances", stat_records: "World records", stat_updated: "Updated",
     f_style: "Style", f_top: "Top", f_search: "Search",
@@ -56,7 +56,7 @@ const I18N = {
     attempts_hint: "view attempts",
     competitions_word: "competitions",
     footer_src: `Sources: <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS: <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
-    footer_disc: "Unaffiliated community project. Data automatically aggregated from public sources.",
+    footer_disc: "Only lifts validated at official 4-movement competitions (muscle-up, pull-up, dip, squat) are recorded. Unaffiliated community project — data automatically aggregated from public sources.",
     updated: "Data from",
     metric_names: { total: "Total", ris: "RIS", muscle_up: "Muscle-up", pull_up: "Pull-up", dip: "Dip", squat: "Squat" },
   },
