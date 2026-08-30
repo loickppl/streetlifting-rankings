@@ -83,6 +83,20 @@ const $ = (s) => document.querySelector(s);
 const t = () => I18N[state.lang];
 const compWord = (n) => n > 1 ? t().competitions_word : t().competitions_word.slice(0, -1);
 
+const _regionNames = {};
+function regionName(c, lang) {
+  if (!c) return "";
+  try {
+    _regionNames[lang] ??= new Intl.DisplayNames([lang], { type: "region" });
+    return _regionNames[lang].of(c) || c;
+  } catch { return c; }
+}
+function countryLabel(c) { return regionName(c, state.lang === "fr" ? "fr" : "en"); }
+function searchableCountries(row) {
+  // match the code and the country name in BOTH site languages
+  const list = row.countries || (row.country ? [row.country] : []);
+  return list.map(c => `${c} ${regionName(c, "fr")} ${regionName(c, "en")}`).join(" ");
+}
 function flagsOf(row) {
   const list = row.countries && row.countries.length ? row.countries
     : (row.country ? [row.country] : []);
@@ -229,7 +243,7 @@ function rankingRows() {
     (!country || (p.countries || [p.country]).includes(country)) &&
     (!from || (p.date && p.date >= from)) &&
     (!to || (p.date && p.date <= to)) &&
-    (!q || `${p.athlete} ${p.country} ${p.competition}`.toLowerCase().includes(q)));
+    (!q || `${p.athlete} ${searchableCountries(p)} ${p.competition}`.toLowerCase().includes(q)));
 
   // ties on the ranked value break by the lightest athlete: known bodyweight
   // first, else the lighter weight class, else the better RIS
@@ -385,7 +399,7 @@ function renderAthletes() {
   const q = $("#a-search").value.trim().toLowerCase();
   let rows = state.athletes.filter(a =>
     (!state.aGender || a.gender === state.aGender) &&
-    (!q || `${a.name} ${a.country}`.toLowerCase().includes(q)));
+    (!q || `${a.name} ${searchableCountries(a)}`.toLowerCase().includes(q)));
 
   const key = state.sort.key;
   const get = (a) => key === "name" ? (a.name || "") : key === "n" ? a.n_competitions :
