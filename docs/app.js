@@ -317,16 +317,16 @@ function renderRankings() {
   const cols = [
     ["col_rank", ""], ["col_athlete", ""],
     ["col_mu", "num"], ["col_pu", "num"], ["col_dip", "num"], ["col_sq", "num"],
-    ["col_total", "num"], ["col_ris", "num"], ["col_comp", ""],
+    ["col_total", "num"], ["col_ris", "num"], ["col_comp", "m-hide"],
   ];
   const thead = `<thead><tr>${cols.map(([k, cls]) =>
-    `<th class="${cls} ${k === metricKey ? "sorted" : ""}">${t()[k]}</th>`).join("")}</tr></thead>`;
+    `<th class="${cls}${k === metricKey ? " sorted" : k !== "col_rank" && k !== "col_athlete" && k !== "col_comp" ? " m-hide" : ""}">${t()[k]}</th>`).join("")}</tr></thead>`;
 
   const maxVal = shown.length ? shown[0][metric] : 1;
   const valueCell = (p, m) => {
     const pre = m === "ris" && p.ris_est ? "~\u2009" : "";
     if (m !== metric || p[m] == null)
-      return `<td class="num mv">${pre}${fmt(p[m])}</td>`;
+      return `<td class="num mv${m !== metric ? " m-hide" : ""}">${pre}${fmt(p[m])}</td>`;
     const pct = Math.max(6, Math.round((p[m] / maxVal) * 100));
     return `<td class="num metric-cell">
       <div class="metric-val">${pre}${fmt(p[m])}</div>
@@ -347,10 +347,11 @@ function renderRankings() {
         <td class="id-cell">
           <div class="id-name"><span class="flag">${flagsOf(p)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
           <div class="id-sub">${subLine(p)}</div>
+          <div class="id-sub id-comp">${esc(p.competition ?? "")} · ${fmtDate(p.date)}</div>
         </td>
         ${valueCell(p, "muscle_up")}${valueCell(p, "pull_up")}${valueCell(p, "dip")}${valueCell(p, "squat")}
         ${valueCell(p, "total")}${valueCell(p, "ris")}
-        <td class="comp-cell">
+        <td class="comp-cell m-hide">
           <div class="comp-name" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</div>
           <div class="comp-date">${fmtDate(p.date)}</div>
         </td>
@@ -432,8 +433,8 @@ function renderAthletes() {
   });
 
   const headers = [
-    ["name", "col_athlete", ""], ["muscle_up", "col_mu", "num"],
-    ["pull_up", "col_pu", "num"], ["dip", "col_dip", "num"], ["squat", "col_sq", "num"],
+    ["name", "col_athlete", ""], ["muscle_up", "col_mu", "num m-hide"],
+    ["pull_up", "col_pu", "num m-hide"], ["dip", "col_dip", "num m-hide"], ["squat", "col_sq", "num m-hide"],
     ["total", "col_total", "num"], ["ris", "col_best_ris", "num"],
   ];
   $("#athletes-table").innerHTML =
@@ -444,10 +445,10 @@ function renderAthletes() {
         <div class="id-name"><span class="flag">${flagsOf(a)}</span><span class="athlete-link" data-athlete="${esc(a.id)}">${esc(a.name)}</span></div>
         <div class="id-sub">${a.n_competitions} ${compWord(a.n_competitions)}</div>
       </td>
-      <td class="num mv">${fmt(a.best?.muscle_up)}</td>
-      <td class="num mv">${fmt(a.best?.pull_up)}</td>
-      <td class="num mv">${fmt(a.best?.dip)}</td>
-      <td class="num mv">${fmt(a.best?.squat)}</td>
+      <td class="num mv m-hide">${fmt(a.best?.muscle_up)}</td>
+      <td class="num mv m-hide">${fmt(a.best?.pull_up)}</td>
+      <td class="num mv m-hide">${fmt(a.best?.dip)}</td>
+      <td class="num mv m-hide">${fmt(a.best?.squat)}</td>
       <td class="num strong-val">${fmt(a.best?.total)}</td>
       <td class="num mv">${fmt(a.best_ris)}</td>
     </tr>`).join("")}</tbody>`;
@@ -498,8 +499,8 @@ function openAthlete(id) {
       <h3>${t().history}</h3>
       <div class="table-scroll"><table class="table compact"><thead><tr>
         <th>${t().col_comp}</th>
-        <th class="num">${t().col_mu}</th><th class="num">${t().col_pu}</th>
-        <th class="num">${t().col_dip}</th><th class="num">${t().col_sq}</th>
+        <th class="num m-hide">${t().col_mu}</th><th class="num m-hide">${t().col_pu}</th>
+        <th class="num m-hide">${t().col_dip}</th><th class="num m-hide">${t().col_sq}</th>
         <th class="num">${t().col_total}</th><th class="num">${t().col_ris}</th>
       </tr></thead><tbody>
         ${perfs.map((p, i) => {
@@ -512,8 +513,8 @@ function openAthlete(id) {
               <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>
               <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${p.class_inferred ? "~\u2009" : ""}${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
             </td>
-            <td class="num mv">${fmt(p.muscle_up)}</td><td class="num mv">${fmt(p.pull_up)}</td>
-            <td class="num mv">${fmt(p.dip)}</td><td class="num mv">${fmt(p.squat)}</td>
+            <td class="num mv m-hide">${fmt(p.muscle_up)}</td><td class="num mv m-hide">${fmt(p.pull_up)}</td>
+            <td class="num mv m-hide">${fmt(p.dip)}</td><td class="num mv m-hide">${fmt(p.squat)}</td>
             <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${p.ris_est ? "~\u2009" : ""}${fmt(p.ris)}</td>
           </tr>`;
           if (!hasAtt) return main;
