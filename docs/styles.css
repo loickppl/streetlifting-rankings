@@ -565,3 +565,19 @@ body.modal-open {
   .table td:first-child, .table th:first-child { padding-left: 0; }
   .table td:last-child, .table th:last-child { padding-right: 0; }
 }
+
+/* ── Pagination ────────────────────────────────────────────── */
+.pager {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 18px;
+}
+.pager:empty { display: none; }
+.pager-btn {
+  background: var(--bg); border: 1px solid var(--border); color: var(--ink);
+  border-radius: var(--r-md); width: 38px; height: 34px; cursor: pointer;
+  font-size: 14px;
+  transition: border-color .12s;
+}
+.pager-btn:hover:not(:disabled) { border-color: var(--ink); }
+.pager-btn:disabled { color: var(--ink-3); cursor: default; opacity: .5; }
+.pager-info { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }

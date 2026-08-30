@@ -69,6 +69,8 @@ const state = {
   records: { unified: [] },
   meta: null,
   // rankings filters
+  page: 1,
+  aPage: 1,
   gender: "male",
   metric: "total",
   klass: "",
@@ -220,6 +222,22 @@ function refreshCountryOptions() {
   }
 }
 
+const PAGE_SIZE = 30;
+function renderPager(el, page, total, onPage) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (pages <= 1) { el.innerHTML = ""; return; }
+  const from = (page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(page * PAGE_SIZE, total);
+  el.innerHTML = `
+    <button class="pager-btn" data-p="${page - 1}" ${page <= 1 ? "disabled" : ""}>←</button>
+    <span class="pager-info">${from}–${to} / ${total}</span>
+    <button class="pager-btn" data-p="${page + 1}" ${page >= pages ? "disabled" : ""}>→</button>`;
+  el.querySelectorAll(".pager-btn").forEach(b => b.addEventListener("click", () => {
+    onPage(parseInt(b.dataset.p, 10));
+    el.closest("section").querySelector(".section-head, .controls")?.scrollIntoView({ block: "start" });
+  }));
+}
+
 /* ── rankings ─────────────────────────────────────────────── */
 function dateRange() {
   const period = $("#f-period").value;
@@ -302,16 +320,20 @@ function renderPodium(rows) {
 function renderRankings() {
   const rows = rankingRows();
   const top = parseInt($("#f-top").value, 10);
-  const shown = top > 0 ? rows.slice(0, top) : rows;
+  const scoped = top > 0 ? rows.slice(0, top) : rows;
+  const pages = Math.max(1, Math.ceil(scoped.length / PAGE_SIZE));
+  if (state.page > pages) state.page = pages;
+  const offset = (state.page - 1) * PAGE_SIZE;
+  const shown = scoped.slice(offset, offset + PAGE_SIZE);
   const { gender, metric, klass } = state;
 
-  renderPodium(shown);
+  renderPodium(scoped);
 
   $("#rankings-title").textContent = t().ranking_title(
     gender === "male" ? t().men : t().women,
     klass || t().all_classes,
     t().metric_names[metric]);
-  $("#rankings-count").textContent = `${shown.length} / ${rows.length} ${t().results}`;
+  $("#rankings-count").textContent = `${scoped.length} / ${rows.length} ${t().results}`;
 
   const metricKey = { muscle_up: "col_mu", pull_up: "col_pu", dip: "col_dip", squat: "col_sq", total: "col_total", ris: "col_ris" }[metric];
   const cols = [
@@ -322,7 +344,7 @@ function renderRankings() {
   const thead = `<thead><tr>${cols.map(([k, cls]) =>
     `<th class="${cls}${k === metricKey ? " sorted" : k !== "col_rank" && k !== "col_athlete" && k !== "col_comp" ? " m-hide" : ""}">${t()[k]}</th>`).join("")}</tr></thead>`;
 
-  const maxVal = shown.length ? shown[0][metric] : 1;
+  const maxVal = scoped.length && scoped[0][metric] != null ? scoped[0][metric] : 1;
   const valueCell = (p, m) => {
     const pre = m === "ris" && p.ris_est ? "~\u2009" : "";
     if (m !== metric || p[m] == null)
@@ -342,7 +364,7 @@ function renderRankings() {
 
   const body = shown.length === 0
     ? `<tbody><tr><td colspan="9" class="empty-row">${t().no_data}</td></tr></tbody>`
-    : `<tbody>${shown.map((p, i) => `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
+    : `<tbody>${shown.map((p, ix) => { const i = offset + ix; return `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
         <td class="rank-cell">${p._dq ? `<span class="dq-rank">DQ</span>` : i < 3 ? `<span class="medal-ico">${["🥇","🥈","🥉"][i]}</span>` : i + 1}</td>
         <td class="id-cell">
           <div class="id-name"><span class="flag">${flagsOf(p)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
@@ -355,9 +377,10 @@ function renderRankings() {
           <div class="comp-name" title="${esc(p.competition ?? "")}">${esc(p.competition ?? "—")}</div>
           <div class="comp-date">${fmtDate(p.date)}</div>
         </td>
-      </tr>`).join("")}</tbody>`;
+      </tr>`; }).join("")}</tbody>`;
 
   $("#rankings-table").innerHTML = thead + body;
+  renderPager($("#rankings-pager"), state.page, scoped.length, (p) => { state.page = p; renderRankings(); });
 }
 
 /* ── records ──────────────────────────────────────────────── */
@@ -437,10 +460,14 @@ function renderAthletes() {
     ["pull_up", "col_pu", "num m-hide"], ["dip", "col_dip", "num m-hide"], ["squat", "col_sq", "num m-hide"],
     ["total", "col_total", "num"], ["ris", "col_best_ris", "num"],
   ];
+  const aPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  if (state.aPage > aPages) state.aPage = aPages;
+  const aOffset = (state.aPage - 1) * PAGE_SIZE;
+  const pageRows = rows.slice(aOffset, aOffset + PAGE_SIZE);
   $("#athletes-table").innerHTML =
     `<thead><tr>${headers.map(([k, label, cls]) =>
       `<th data-sort="${k}" class="${cls} ${state.sort.key === k ? "sorted" : ""}">${t()[label]}</th>`).join("")}</tr></thead>` +
-    `<tbody>${rows.map(a => `<tr>
+    `<tbody>${pageRows.map(a => `<tr>
       <td class="id-cell">
         <div class="id-name"><span class="flag">${flagsOf(a)}</span><span class="athlete-link" data-athlete="${esc(a.id)}">${esc(a.name)}</span></div>
         <div class="id-sub">${a.n_competitions} ${compWord(a.n_competitions)}</div>
@@ -452,6 +479,7 @@ function renderAthletes() {
       <td class="num strong-val">${fmt(a.best?.total)}</td>
       <td class="num mv">${fmt(a.best_ris)}</td>
     </tr>`).join("")}</tbody>`;
+  renderPager($("#athletes-pager"), state.aPage, rows.length, (p) => { state.aPage = p; renderAthletes(); });
 }
 
 /* ── athlete modal ────────────────────────────────────────── */
@@ -575,11 +603,12 @@ function bind() {
     renderRankings(); renderRecords(); renderAthletes();
   });
 
-  segBind("#f-gender", (v) => { state.gender = v; refreshClassChips(); renderRankings(); });
+  segBind("#f-gender", (v) => { state.gender = v; state.page = 1; refreshClassChips(); renderRankings(); });
   $("#f-metric").addEventListener("click", (e) => {
     const btn = e.target.closest(".pill");
     if (!btn) return;
     state.metric = btn.dataset.value;
+    state.page = 1;
     $("#f-metric").querySelectorAll(".pill").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();
   });
@@ -592,23 +621,25 @@ function bind() {
       return;
     }
     state.klass = btn.dataset.value;
+    state.page = 1;
     $("#f-class").querySelectorAll(".chip").forEach(b => b.classList.toggle("active", b === btn));
     renderRankings();
   });
-  ["#f-top", "#f-country", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", renderRankings));
+  ["#f-top", "#f-country", "#f-from", "#f-to"].forEach(s => $(s).addEventListener("change", () => { state.page = 1; renderRankings(); }));
   $("#f-period").addEventListener("change", () => {
+    state.page = 1;
     const custom = $("#f-period").value === "custom";
     $("#date-from-wrap").classList.toggle("hidden", !custom);
     $("#date-to-wrap").classList.toggle("hidden", !custom);
     renderRankings();
   });
-  $("#f-search").addEventListener("input", renderRankings);
+  $("#f-search").addEventListener("input", () => { state.page = 1; renderRankings(); });
 
   segBind("#r-gender", (v) => { state.rGender = v; renderRecords(); });
   $("#r-country").addEventListener("change", renderRecords);
 
-  segBind("#a-gender", (v) => { state.aGender = v; renderAthletes(); });
-  $("#a-search").addEventListener("input", renderAthletes);
+  segBind("#a-gender", (v) => { state.aGender = v; state.aPage = 1; renderAthletes(); });
+  $("#a-search").addEventListener("input", () => { state.aPage = 1; renderAthletes(); });
   $("#athletes-table").addEventListener("click", (e) => {
     const th = e.target.closest("th[data-sort]");
     if (!th) return;
