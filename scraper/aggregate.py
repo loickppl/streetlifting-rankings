@@ -500,6 +500,11 @@ def main():
         for tok in name_tokens(m.get("name")):
             if len(tok) >= 4:
                 buckets.setdefault(tok, []).append(aid)
+    blocked_pairs = {frozenset(p) for p in overrides.get("distinct_athletes", [])}
+
+    def is_blocked(x, y):
+        return frozenset((x, y)) in blocked_pairs
+
     redirect = {}
     n_perfs, latest_by_aid, classes_pre, events_pre = {}, {}, {}, {}
     for row in performances:
@@ -527,7 +532,7 @@ def main():
         for i in range(len(aids)):
             for j in range(i + 1, len(aids)):
                 a, b = athlete_meta[aids[i]], athlete_meta[aids[j]]
-                if a["id"] in redirect or b["id"] in redirect:
+                if a["id"] in redirect or b["id"] in redirect or is_blocked(a["id"], b["id"]):
                     continue
                 if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
                     continue
@@ -591,6 +596,8 @@ def main():
                 if ai == bj:
                     continue
                 a, b = athlete_meta[ai], athlete_meta[bj]
+                if is_blocked(ai, bj):
+                    continue
                 if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
                     continue
                 if not names_compatible(a.get("name"), b.get("name")):
@@ -601,6 +608,42 @@ def main():
                 if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
                     keep["name"] = drop["name"]   # fuller name wins
                 keep.setdefault("countries", set()).update(drop.get("countries", set()))
+                for field in ("country", "country_fr", "gender", "instagram", "profile_url"):
+                    if not keep.get(field) and drop.get(field):
+                        keep[field] = drop[field]
+                redirect[drop["id"]] = keep["id"]
+
+    # Pseudonym accounts ("CaptainG" = "Kevin Gogo"): identical lifts prove
+    # identity regardless of the name — same signature (all movements +
+    # total, >=4 known values) within 10 days.
+    sig_index = {}
+    for row in performances:
+        vals = tuple(round(row.get(m), 2) if row.get(m) is not None else None
+                     for m in ("muscle_up", "pull_up", "dip", "squat", "total"))
+        if sum(v is not None for v in vals) < 4 or not row.get("date"):
+            continue
+        d = int(row["date"][:4]) * 372 + int(row["date"][5:7]) * 31 + int(row["date"][8:10])
+        sig_index.setdefault(vals, []).append((row["athlete_id"], d))
+    for entries in sig_index.values():
+        if len({aid for aid, _ in entries}) < 2:
+            continue
+        for x in range(len(entries)):
+            for y in range(x + 1, len(entries)):
+                ai, d1 = entries[x]
+                bj, d2 = entries[y]
+                while ai in redirect: ai = redirect[ai]
+                while bj in redirect: bj = redirect[bj]
+                if ai == bj or abs(d1 - d2) > 10 or is_blocked(ai, bj):
+                    continue
+                a, b = athlete_meta.get(ai), athlete_meta.get(bj)
+                if not a or not b:
+                    continue
+                if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
+                    continue
+                keep, drop = (a, b) if n_perfs.get(ai, 0) >= n_perfs.get(bj, 0) else (b, a)
+                if len(name_tokens(drop.get("name"))) > len(name_tokens(keep.get("name"))):
+                    keep["name"] = drop["name"]   # real name beats the pseudonym
+                keep.setdefault("countries", set()).update(drop.get("countries") or set())
                 for field in ("country", "country_fr", "gender", "instagram", "profile_url"):
                     if not keep.get(field) and drop.get(field):
                         keep[field] = drop[field]
@@ -881,6 +924,64 @@ def main():
             },
         },
     }
+
+    # ── suspects report: probable duplicate profiles for human review ──
+    # pairs sharing a rare name token, same gender, compatible country and
+    # overlapping weight classes — not mergeable automatically, but worth
+    # a look. Confirm via overrides.merge_athletes; silence false positives
+    # via overrides.distinct_athletes.
+    from collections import Counter as _Counter
+    tok_freq = _Counter(tok for a in athletes for tok in name_tokens(a.get("name")))
+    tok_buckets = {}
+    for a in athletes:
+        for tok in name_tokens(a.get("name")):
+            if len(tok) >= 4 and tok_freq[tok] <= 12:
+                tok_buckets.setdefault(tok, []).append(a)
+    cls_of_final = {a["id"]: {p.get("class") for p in a["performances"] if p.get("class")}
+                    for a in athletes}
+    seen_pairs, suspects = set(), []
+    for tok, group in tok_buckets.items():
+        for i in range(len(group)):
+            for j in range(i + 1, len(group)):
+                a, b = group[i], group[j]
+                key = frozenset((a["id"], b["id"]))
+                if key in seen_pairs or key in blocked_pairs:
+                    continue
+                seen_pairs.add(key)
+                if names_compatible(a.get("name"), b.get("name")):
+                    continue   # the automatic passes already judged these
+                if a.get("gender") and b.get("gender") and a["gender"] != b["gender"]:
+                    continue
+                if a.get("country") and b.get("country") and a["country"] != b["country"]:
+                    continue
+                ca, cb = cls_of_final.get(a["id"], set()), cls_of_final.get(b["id"], set())
+                if ca and cb and not (ca & cb):
+                    continue
+                # signal must be stronger than a shared first name: the shared
+                # token is the surname of both, or another token pair is a
+                # near-match (typo / diminutive prefix)
+                ta = norm_name(a.get("name")).split()
+                tb = norm_name(b.get("name")).split()
+                surname_match = ta and tb and tok == ta[-1] == tb[-1]
+                near = any(x != y and (_lev1(x, y) or (len(x) >= 3 and (x.startswith(y) or y.startswith(x))))
+                           for x in ta for y in tb)
+                if not (surname_match or near):
+                    continue
+                suspects.append((tok, a, b))
+    lines = ["# Profils suspects (doublons probables)", "",
+             "Paires partageant un token de nom rare, même genre, pays compatible,",
+             "catégories qui se recoupent. À vérifier humainement :",
+             "- même personne → ajouter `[\"id_gardé\", \"id_supprimé\"]` dans `merge_athletes` (data/overrides.json)",
+             "- personnes distinctes → ajouter la paire dans `distinct_athletes` pour ne plus la lister", ""]
+    for tok, a, b in sorted(suspects, key=lambda s: (s[1].get("country") or "zz", s[0]))[:120]:
+        lines.append(f"- **{a['name']}** (`{a['id']}`, {a.get('country') or '?'}, "
+                     f"{a['n_competitions']} comps) ↔ **{b['name']}** (`{b['id']}`, "
+                     f"{b.get('country') or '?'}, {b['n_competitions']} comps) — token `{tok}` — "
+                     f"override: `[\"{a['id']}\", \"{b['id']}\"]`")
+    if len(suspects) > 120:
+        lines.append(f"\n… et {len(suspects) - 120} paires de plus.")
+    (ROOT / "data" / "suspects.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"suspects report: {len(suspects)} pairs -> data/suspects.md")
 
     database = {"meta": meta, "records": records, "athletes": athletes}
 
