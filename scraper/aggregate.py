@@ -165,14 +165,25 @@ def normalize_class(row):
             row["class_inferred"] = True
         return
     m = MINUS_CLASS_RE.match(cls)
-    if m and float(m.group(1)) > top:
-        # "-104kg" men / "-80kg" women: defunct grids above the official top —
-        # exact class from bodyweight when known, else the open class (marked ~)
-        if row.get("bodyweight"):
-            row["class"] = class_for_bodyweight(gender, row["bodyweight"])
-        else:
-            row["class"] = f"+{top:g}kg"
-            row["class_inferred"] = True
+    if m:
+        bound = float(m.group(1))
+        if bound > top:
+            # "-104kg" men / "-80kg" women: defunct grids above the official
+            # top — exact class from bodyweight, else the open class (~)
+            if row.get("bodyweight"):
+                row["class"] = class_for_bodyweight(gender, row["bodyweight"])
+            else:
+                row["class"] = f"+{top:g}kg"
+                row["class_inferred"] = True
+        elif bound not in LADDER[gender]:
+            # "-59", "-74", "-83", "-93"...: no longer official — exact class
+            # from bodyweight, else the enclosing standard class (~)
+            if row.get("bodyweight"):
+                row["class"] = class_for_bodyweight(gender, row["bodyweight"])
+            else:
+                nxt = next(b for b in LADDER[gender] if b >= bound)
+                row["class"] = f"-{nxt:g}kg"
+                row["class_inferred"] = True
 
 
 # Final Rep event types kept: 4-movement 1RM streetlifting only.
