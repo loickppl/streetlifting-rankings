@@ -33,7 +33,11 @@ body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* footer pinned to the bottom even when content is short */
+  display: flex; flex-direction: column;
+  min-height: 100vh; min-height: 100dvh;
 }
+.main { flex: 1 0 auto; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button { font-family: inherit; }
