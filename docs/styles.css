@@ -22,9 +22,10 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-/* wide content must scroll in its own container, never widen the page —
-   clip (not hidden) keeps position:sticky working */
-html, body { overflow-x: clip; }
+/* wide content must scroll in its own container, never widen the page.
+   Clip is applied per-section (NOT on html/body: overflow on the root
+   breaks iOS Safari's device-width layout). */
+.topbar, .hero, .main, .footer { overflow-x: clip; }
 body {
   margin: 0;
   background: var(--bg);
@@ -37,6 +38,8 @@ body {
   display: flex; flex-direction: column;
   min-height: 100vh; min-height: 100dvh;
 }
+/* flex items must be allowed to shrink to the viewport width */
+body > * { min-width: 0; }
 .main { flex: 1 0 auto; }
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
