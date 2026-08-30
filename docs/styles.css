@@ -546,3 +546,6 @@ body.modal-open {
 }
 .modal { overscroll-behavior: contain; touch-action: none; }
 .modal-box { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y pinch-zoom; }
+
+/* disqualified athletes listed after the ranking */
+.dq-rank { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .05em; }

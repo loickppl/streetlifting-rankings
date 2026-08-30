@@ -260,13 +260,35 @@ function rankingRows() {
     ((a.bodyweight ?? Infinity) - (b.bodyweight ?? Infinity)));
   // a ranking lists each athlete once: keep their best result in the filter scope
   const seen = new Set();
-  return rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
+  rows = rows.filter(r => !seen.has(r.athlete_id) && seen.add(r.athlete_id));
+
+  // Total/RIS: athletes with only DQ results have nothing to rank — list
+  // them last, marked DQ (their validated lifts already count in the
+  // per-movement rankings)
+  if (metric === "total" || metric === "ris") {
+    const dq = state.performances.filter(p =>
+      p.gender === gender && p[metric] == null && p.disqualified &&
+      !seen.has(p.athlete_id) &&
+      (!klass || p.class === klass) &&
+      (!country || (p.countries || [p.country]).includes(country)) &&
+      (!from || (p.date && p.date >= from)) &&
+      (!to || (p.date && p.date <= to)) &&
+      (!q || `${p.athlete} ${searchableCountries(p)} ${p.competition}`.toLowerCase().includes(q)));
+    dq.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const dqSeen = new Set();
+    for (const p of dq) {
+      if (dqSeen.has(p.athlete_id)) continue;
+      dqSeen.add(p.athlete_id);
+      rows.push({ ...p, _dq: true });
+    }
+  }
+  return rows;
 }
 
 function renderPodium(rows) {
   const { metric } = state;
   const unit = metric === "ris" ? "" : "kg";
-  $("#podium").innerHTML = rows.slice(0, 3).map((p, i) => `
+  $("#podium").innerHTML = rows.filter(p => !p._dq).slice(0, 3).map((p, i) => `
     <div class="podium-card p${i + 1}" data-athlete="${esc(p.athlete_id)}">
       <div class="pos">${i + 1}</div>
       <span class="medal">#${i + 1}</span>
@@ -303,7 +325,7 @@ function renderRankings() {
   const maxVal = shown.length ? shown[0][metric] : 1;
   const valueCell = (p, m) => {
     const pre = m === "ris" && p.ris_est ? "~\u2009" : "";
-    if (m !== metric)
+    if (m !== metric || p[m] == null)
       return `<td class="num mv">${pre}${fmt(p[m])}</td>`;
     const pct = Math.max(6, Math.round((p[m] / maxVal) * 100));
     return `<td class="num metric-cell">
@@ -321,7 +343,7 @@ function renderRankings() {
   const body = shown.length === 0
     ? `<tbody><tr><td colspan="9" class="empty-row">${t().no_data}</td></tr></tbody>`
     : `<tbody>${shown.map((p, i) => `<tr class="${i < 3 ? `top3 t${i + 1}` : ""}">
-        <td class="rank-cell">${i < 3 ? `<span class="medal-ico">${["🥇","🥈","🥉"][i]}</span>` : i + 1}</td>
+        <td class="rank-cell">${p._dq ? `<span class="dq-rank">DQ</span>` : i < 3 ? `<span class="medal-ico">${["🥇","🥈","🥉"][i]}</span>` : i + 1}</td>
         <td class="id-cell">
           <div class="id-name"><span class="flag">${flagsOf(p)}</span><span class="athlete-link" data-athlete="${esc(p.athlete_id)}">${esc(p.athlete)}</span></div>
           <div class="id-sub">${subLine(p)}</div>
