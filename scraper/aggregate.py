@@ -957,15 +957,20 @@ def main():
                 ca, cb = cls_of_final.get(a["id"], set()), cls_of_final.get(b["id"], set())
                 if ca and cb and not (ca & cb):
                     continue
-                # signal must be stronger than a shared first name: the shared
-                # token is the surname of both, or another token pair is a
-                # near-match (typo / diminutive prefix)
+                # BOTH names must be similar: first names alike (equal, one
+                # letter apart, or a diminutive prefix like Dan/Daniel) AND
+                # surnames alike — different first names or different
+                # surnames = different people
                 ta = norm_name(a.get("name")).split()
                 tb = norm_name(b.get("name")).split()
-                surname_match = ta and tb and tok == ta[-1] == tb[-1]
-                near = any(x != y and (_lev1(x, y) or (len(x) >= 3 and (x.startswith(y) or y.startswith(x))))
-                           for x in ta for y in tb)
-                if not (surname_match or near):
+                if not ta or not tb:
+                    continue
+                alike = lambda x, y: (x == y or _lev1(x, y)
+                                      or (len(x) >= 3 and y.startswith(x))
+                                      or (len(y) >= 3 and x.startswith(y)))
+                if not alike(ta[0], tb[0]):
+                    continue
+                if len(ta) > 1 and len(tb) > 1 and not alike(ta[-1], tb[-1]):
                     continue
                 suspects.append((tok, a, b))
     lines = ["# Profils suspects (doublons probables)", "",
