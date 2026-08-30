@@ -524,6 +524,7 @@ button { font-family: inherit; }
   .hstat { padding-right: 20px; margin-right: 20px; }
   .hstat .v { font-size: 20px; }
   .controls-row.secondary { flex-direction: column; align-items: stretch; }
+  .controls-row.secondary .seg { align-self: flex-start; }
 }
 
 /* record holder nationality flag */
