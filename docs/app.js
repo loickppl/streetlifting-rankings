@@ -25,7 +25,7 @@ const I18N = {
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Historique des compétitions",
     est_total: "Total estimé", est_total_tip: "Somme des 4 records all-time (jamais réalisé en une seule compétition)", total_tip: "Meilleur total réalisé en compétition",
-    attempts_hint: "voir les tentatives",
+    attempts_hint: "voir les tentatives", lifts_hint: "voir les charges",
     competitions_word: "compétitions",
     footer_src: `Sources : <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS : <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
     footer_disc: "Seules les performances validées en compétition officielle 4 mouvements (muscle-up, traction, dips, squat) sont recensées. Projet communautaire non affilié — données agrégées automatiquement depuis des sources publiques.",
@@ -53,7 +53,7 @@ const I18N = {
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Competition history",
     est_total: "Est. total", est_total_tip: "Sum of the 4 all-time PRs (never lifted in a single meet)", total_tip: "Best total achieved in competition",
-    attempts_hint: "view attempts",
+    attempts_hint: "view attempts", lifts_hint: "view lifts",
     competitions_word: "competitions",
     footer_src: `Sources: <a href="https://rankings.officialstreetlifting.com/" target="_blank" rel="noopener">Official Streetlifting</a> · <a href="https://final-rep.com/records/" target="_blank" rel="noopener">Final Rep</a> · RIS: <a href="https://warisradji.com/ris/" target="_blank" rel="noopener">warisradji.com</a>`,
     footer_disc: "Only lifts validated at official 4-movement competitions (muscle-up, pull-up, dip, squat) are recorded. Unaffiliated community project — data automatically aggregated from public sources.",
@@ -533,30 +533,43 @@ function openAthlete(id) {
       </tr></thead><tbody>
         ${perfs.map((p, i) => {
           const hasAtt = Array.isArray(p.attempts) && p.attempts.length > 0;
+          const hasLifts = ["muscle_up", "pull_up", "dip", "squat"].some(m => p[m] != null);
+          const expandable = hasAtt || hasLifts;
+          const hint = hasAtt
+            ? ` · <span class="att-hint">${t().attempts_hint}</span>`
+            : hasLifts ? ` · <span class="att-hint m-only">${t().lifts_hint}</span>` : "";
           const place = p.disqualified
             ? `<span class="place-chip dq">DQ</span> `
             : p.place ? `<span class="place-chip">#${p.place}${p.place_by_ris ? '<small class="ris-tag">RIS</small>' : ""}</span> ` : "";
-          const main = `<tr class="${hasAtt ? "has-attempts" : ""}" ${hasAtt ? `data-attempts="${i}"` : ""}>
+          const main = `<tr class="${expandable ? "has-attempts" : ""}" ${expandable ? `data-attempts="${i}"` : ""}>
             <td class="id-cell">
               <div class="comp-name" title="${esc(p.competition ?? "")}">${place}${esc(p.competition ?? "—")}</div>
-              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${p.class_inferred ? "~\u2009" : ""}${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hasAtt ? ` · <span class="att-hint">${t().attempts_hint}</span>` : ""}</div>
+              <div class="id-sub">${fmtDate(p.date)}${p.class ? ` · <b>${p.class_inferred ? "~\u2009" : ""}${esc(p.class)}</b>` : ""}${p.bodyweight ? ` · ${fmt(p.bodyweight)} kg` : ""}${hint}</div>
             </td>
             <td class="num mv m-hide">${fmt(p.muscle_up)}</td><td class="num mv m-hide">${fmt(p.pull_up)}</td>
             <td class="num mv m-hide">${fmt(p.dip)}</td><td class="num mv m-hide">${fmt(p.squat)}</td>
             <td class="num strong-val">${fmt(p.total)}</td><td class="num mv">${p.ris_est ? "~\u2009" : ""}${fmt(p.ris)}</td>
           </tr>`;
-          if (!hasAtt) return main;
-          const byMove = {};
-          p.attempts.forEach(([m, n, w, ok]) => (byMove[m] ??= []).push([n, w, ok]));
-          const detail = `<tr class="attempts-row hidden" data-attempts-detail="${i}"><td colspan="7">
-            <div class="attempts-grid">
-              ${["muscle_up", "pull_up", "dip", "squat"].filter(m => byMove[m]).map(m => `
+          if (!expandable) return main;
+          let grid;
+          if (hasAtt) {
+            const byMove = {};
+            p.attempts.forEach(([m, n, w, ok]) => (byMove[m] ??= []).push([n, w, ok]));
+            grid = ["muscle_up", "pull_up", "dip", "squat"].filter(m => byMove[m]).map(m => `
                 <div class="attempts-move">
                   <span class="attempts-label">${t().metric_names[m]}</span>
                   ${byMove[m].sort((x, y) => x[0] - y[0]).map(([n, w, ok]) =>
                     `<span class="att ${ok ? "ok" : "ko"}">${fmt(w)}<small>${ok ? "✓" : "✗"}</small></span>`).join("")}
-                </div>`).join("")}
-            </div>
+                </div>`).join("");
+          } else {
+            grid = ["muscle_up", "pull_up", "dip", "squat"].map(m => `
+                <div class="attempts-move">
+                  <span class="attempts-label">${t().metric_names[m]}</span>
+                  <span class="att ${p[m] != null ? "ok" : "ko"}">${fmt(p[m])}</span>
+                </div>`).join("");
+          }
+          const detail = `<tr class="attempts-row hidden" data-attempts-detail="${i}"><td colspan="7">
+            <div class="attempts-grid">${grid}</div>
           </td></tr>`;
           return main + detail;
         }).join("")}

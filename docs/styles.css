@@ -585,3 +585,7 @@ body.modal-open {
 .pager-btn:hover:not(:disabled) { border-color: var(--ink); }
 .pager-btn:disabled { color: var(--ink-3); cursor: default; opacity: .5; }
 .pager-info { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* mobile-only hint (desktop already shows the movement columns) */
+.m-only { display: none; }
+@media (max-width: 640px) { .m-only { display: inline; } }
