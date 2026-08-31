@@ -11,7 +11,7 @@ const I18N = {
     stat_athletes: "Athlètes", stat_perfs: "Performances", stat_records: "Records mondiaux", stat_updated: "Mise à jour",
     f_style: "Style", f_top: "Top", f_search: "Recherche",
     f_period: "Période", p_all: "Depuis toujours", p_custom: "Dates…", f_from: "Du", f_to: "Au",
-    f_country: "Pays", world_records: "Monde (WR)",
+    f_country: "Pays", world_records: "Monde (WR)", f_filters: "Filtres",
     men: "Hommes", women: "Femmes", all_m: "Tous", all_f: "Tous", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Traction", m_dip: "Dips", m_sq: "Squat",
     ph_search: "Athlète, pays, compétition…", ph_search_a: "Nom, pays…",
@@ -39,7 +39,7 @@ const I18N = {
     stat_athletes: "Athletes", stat_perfs: "Performances", stat_records: "World records", stat_updated: "Updated",
     f_style: "Style", f_top: "Top", f_search: "Search",
     f_period: "Period", p_all: "All time", p_custom: "Dates…", f_from: "From", f_to: "To",
-    f_country: "Country", world_records: "World (WR)",
+    f_country: "Country", world_records: "World (WR)", f_filters: "Filters",
     men: "Men", women: "Women", all_m: "All", all_f: "All", all_classes: "Open",
     m_total: "Total", m_mu: "Muscle-up", m_pu: "Pull-up", m_dip: "Dip", m_sq: "Squat",
     ph_search: "Athlete, country, competition…", ph_search_a: "Name, country…",
@@ -317,7 +317,16 @@ function renderPodium(rows) {
     </div>`).join("");
 }
 
+function updateFilterBadge() {
+  const n = ($("#f-period").value ? 1 : 0)
+    + ($("#f-country").value ? 1 : 0)
+    + ($("#f-search").value.trim() ? 1 : 0)
+    + ($("#f-top").value !== "30" ? 1 : 0);
+  $("#f-badge").textContent = n ? String(n) : "";
+}
+
 function renderRankings() {
+  updateFilterBadge();
   const rows = rankingRows();
   const top = parseInt($("#f-top").value, 10);
   const scoped = top > 0 ? rows.slice(0, top) : rows;
@@ -616,6 +625,12 @@ function bind() {
     renderRankings(); renderRecords(); renderAthletes();
   });
 
+  $("#filters-toggle").addEventListener("click", () => {
+    const row = $("#rankings-secondary");
+    const open = row.classList.toggle("open");
+    $("#filters-toggle").setAttribute("aria-expanded", open);
+    $("#filters-toggle").classList.toggle("open", open);
+  });
   segBind("#f-gender", (v) => { state.gender = v; state.page = 1; refreshClassChips(); renderRankings(); });
   $("#f-metric").addEventListener("click", (e) => {
     const btn = e.target.closest(".pill");

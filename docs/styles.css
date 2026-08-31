@@ -589,3 +589,24 @@ body.modal-open {
 /* mobile-only hint (desktop already shows the movement columns) */
 .m-only { display: none; }
 @media (max-width: 640px) { .m-only { display: inline; } }
+
+/* ── Mobile: secondary filters collapse behind a toggle ────── */
+.filters-toggle { display: none; }
+@media (max-width: 640px) {
+  .filters-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    align-self: flex-start;
+    background: var(--bg); border: 1px solid var(--border); color: var(--ink-2);
+    border-radius: var(--r-md); padding: 7px 14px;
+    font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+  .filters-toggle .chev { font-size: 10px; transition: transform .15s; }
+  .filters-toggle.open .chev { transform: rotate(180deg); }
+  .filters-toggle .f-badge:not(:empty) {
+    background: var(--accent); color: #fff;
+    font-size: 10px; font-weight: 700; line-height: 1;
+    border-radius: 999px; padding: 3px 6px;
+  }
+  #rankings-secondary { display: none; }
+  #rankings-secondary.open { display: flex; }
+}
