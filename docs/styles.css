@@ -556,14 +556,18 @@ body.modal-open {
 .id-comp { display: none; }
 @media (max-width: 640px) {
   .table .m-hide { display: none; }
-  .id-comp {
-    display: block;
-    max-width: 56vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  .id-comp { display: block; }
+  /* long names/competitions must truncate, never widen the table */
+  .id-cell { min-width: 0; max-width: 52vw; }
+  .id-name { overflow: hidden; }
+  .id-name .athlete-link {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
   }
-  .id-cell { min-width: 0; }
+  .id-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .table td, .table th { padding-left: 8px; padding-right: 8px; }
   .table td:first-child, .table th:first-child { padding-left: 0; }
   .table td:last-child, .table th:last-child { padding-right: 0; }
+  .table td:nth-last-child(2), .table th:nth-last-child(2) { padding-right: 0; }
 }
 
 /* ── Pagination ────────────────────────────────────────────── */
