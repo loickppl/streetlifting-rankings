@@ -850,6 +850,26 @@ def main():
         if m and m.get("country_fr"):
             row["country"] = m["country"]
 
+    # OSL slugs encode the registration name; a display name sharing zero
+    # tokens with the slug is a pseudonym ("I have no name") — restore the
+    # real name from the slug. Runs last so merge name choices can't undo it.
+    renamed = 0
+    for aid, m in athlete_meta.items():
+        if aid.startswith("fr-"):
+            continue
+        slug_tokens = [tk for tk in aid.split("-") if tk.isalpha() and len(tk) > 1]
+        if len(slug_tokens) < 2 or not m.get("name"):
+            continue
+        if not (name_tokens(m["name"]) & set(slug_tokens)):
+            m["name"] = " ".join(tk.capitalize() for tk in slug_tokens)
+            renamed += 1
+    if renamed:
+        for row in performances:
+            mm = athlete_meta.get(row["athlete_id"])
+            if mm:
+                row["athlete"] = mm["name"]
+        print(f"restored {renamed} real names from OSL slugs (pseudonym display names)")
+
     # ── athlete records built from the merged rows ──
     by_athlete = {}
     for row in performances:
