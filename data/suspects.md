@@ -43,7 +43,7 @@ catégories qui se recoupent. À vérifier humainement :
 - **Akash R** (`fr-38DMM1uKbXvURIwNSWXNdh3SM93`, IN, 1 comps) ↔ **Akash S** (`fr-38VrbznDC3iO1ETDfrsyhOxtXl8`, IN, 2 comps) — token `akash` — override: `["fr-38DMM1uKbXvURIwNSWXNdh3SM93", "fr-38VrbznDC3iO1ETDfrsyhOxtXl8"]`
 - **Gaurav shinde** (`fr-2u7pgjUSpBPbVoE7ouIq64xpP1n`, IN, 1 comps) ↔ **Gaurav Shindde** (`gaurav-shindde`, IN, 1 comps) — token `gaurav` — override: `["fr-2u7pgjUSpBPbVoE7ouIq64xpP1n", "gaurav-shindde"]`
 - **Gideon Sinaij** (`fr-2x8LsaEJd1foVDeJTZ4BV2Y0bUs`, NL, 1 comps) ↔ **Gideon Sinaj** (`gideon-sinaj`, ?, 1 comps) — token `gideon` — override: `["fr-2x8LsaEJd1foVDeJTZ4BV2Y0bUs", "gideon-sinaj"]`
-- **Sanne Laagland Winder** (`fr-2rWv0fDZdfNiLoDXdNbzanRYEQe`, NL, 1 comps) ↔ **Sanne Laagland Win** (`sanne-laagland-win`, NL, 1 comps) — token `laagland` — override: `["fr-2rWv0fDZdfNiLoDXdNbzanRYEQe", "sanne-laagland-win"]`
+- **Sanne Laagland Winder** (`fr-2rWv0fDZdfNiLoDXdNbzanRYEQe`, NL, 1 comps) ↔ **Sanne Laagland Win** (`sanne-laagland-win`, NL, 1 comps) — token `sanne` — override: `["fr-2rWv0fDZdfNiLoDXdNbzanRYEQe", "sanne-laagland-win"]`
 - **Vilmer Gimbringer** (`vilmer-gimbringer`, SE, 1 comps) ↔ **Wilmer Gimbringer** (`wilmer-gimbringer`, SE, 1 comps) — token `gimbringer` — override: `["vilmer-gimbringer", "wilmer-gimbringer"]`
 - **Jonatan Malmlöf** (`jonatan-malmlof`, SE, 1 comps) ↔ **Jonathan Malmlöf** (`jonathan-malmlof`, SE, 1 comps) — token `malmlof` — override: `["jonatan-malmlof", "jonathan-malmlof"]`
 - **Benjamin Tucker Sav** (`benjamin-tucker-sav`, SG, 1 comps) ↔ **Benjamin ** (`fr-2wZkOz9EKnrOfgoiQHu6ehckvbe`, ?, 1 comps) — token `benjamin` — override: `["benjamin-tucker-sav", "fr-2wZkOz9EKnrOfgoiQHu6ehckvbe"]`

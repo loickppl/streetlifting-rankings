@@ -24,6 +24,7 @@ const I18N = {
     results: "résultats", no_data: "Aucun résultat",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Historique des compétitions",
+    rec_best: "Meilleure marque", rec_best_tip: "Meilleure performance validée toutes compétitions officielles — un record du monde ne peut être établi qu’en compétition internationale (Worlds, Euros, Asias, Americs)",
     est_total: "Total estimé", est_total_tip: "Somme des 4 records all-time (jamais réalisé en une seule compétition)", total_tip: "Meilleur total réalisé en compétition",
     attempts_hint: "voir les tentatives", lifts_hint: "voir les charges",
     competitions_word: "compétitions",
@@ -52,6 +53,7 @@ const I18N = {
     results: "results", no_data: "No results",
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Competition history",
+    rec_best: "Best mark", rec_best_tip: "Best validated mark at any official competition — world records can only be set at international events (Worlds, Euros, Asias, Americs)",
     est_total: "Est. total", est_total_tip: "Sum of the 4 all-time PRs (never lifted in a single meet)", total_tip: "Best total achieved in competition",
     attempts_hint: "view attempts", lifts_hint: "view lifts",
     competitions_word: "competitions",
@@ -66,7 +68,7 @@ const state = {
   lang: "fr",
   performances: [],
   athletes: [],
-  records: { unified: [] },
+  records: { official: [], best: [] },
   meta: null,
   // rankings filters
   page: 1,
@@ -154,7 +156,7 @@ function renderHeroStats() {
   const stats = [
     [state.athletes.length, t().stat_athletes],
     [state.performances.length, t().stat_perfs],
-    [s.finalrep?.records ?? 0, t().stat_records],
+    [(state.records.official || []).length, t().stat_records],
     [fmtDate(state.meta.generated_at?.slice(0, 10)), t().stat_updated],
   ];
   $("#hero-stats").innerHTML = stats.map(([v, l]) =>
@@ -418,32 +420,61 @@ function nationalRecords(gender, country) {
   return Object.values(best);
 }
 
+function recordRow(r, mn, m, cls, label) {
+  const holder = r.athlete_id
+    ? `<span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${esc(r.athlete)}</span>`
+    : esc(r.athlete);
+  return `<div class="record-row${cls}"${cls ? ` title="${t().rec_best_tip}"` : ""}>
+    <span class="record-move">${label ?? mn[m]}</span>
+    <span class="record-holder">${flagEmoji(r.country)}${holder}</span>
+    <span class="record-value">${r.class_inferred || r.estimated ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
+  </div>`;
+}
+
 function renderRecords() {
   const grid = $("#records-grid");
   const mn = t().metric_names;
   const country = $("#r-country").value;
-  const recs = country
-    ? nationalRecords(state.rGender, country)
-    : (state.records.unified || []).filter(r => r.gender === state.rGender);
-  const tag = country ? esc(country) : "WR";
-  const byClass = {};
-  recs.forEach(r => (byClass[r.class] ??= []).push(r));
 
-  grid.innerHTML = Object.keys(byClass).sort(classSort).map(c => `
+  if (country) {
+    const recs = nationalRecords(state.rGender, country);
+    const byClass = {};
+    recs.forEach(r => (byClass[r.class] ??= []).push(r));
+    grid.innerHTML = Object.keys(byClass).sort(classSort).map(c => `
+      <div class="record-card">
+        <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">${esc(country)}</span></div>
+        <div class="record-rows">
+          ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
+            const r = byClass[c].find(x => x.movement === m);
+            return r ? recordRow(r, mn, m, "", null) : "";
+          }).join("")}
+        </div>
+      </div>`).join("") || `<p class="empty-row">${t().no_data}</p>`;
+    return;
+  }
+
+  // world view: official WRs (international events) + higher all-comp best marks
+  const off = {}, best = {};
+  (state.records.official || []).forEach(r => { if (r.gender === state.rGender) off[r.class + "|" + r.movement] = r; });
+  (state.records.best || []).forEach(r => { if (r.gender === state.rGender) best[r.class + "|" + r.movement] = r; });
+  const classes = [...new Set([...Object.keys(off), ...Object.keys(best)].map(k => k.split("|")[0]))];
+
+  grid.innerHTML = classes.sort(classSort).map(c => `
     <div class="record-card">
-      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">${tag}</span></div>
+      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">WR</span></div>
       <div class="record-rows">
         ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
-          const r = byClass[c].find(x => x.movement === m);
-          if (!r) return "";
-          const holder = r.athlete_id
-            ? `<span class="athlete-link" data-athlete="${esc(r.athlete_id)}">${esc(r.athlete)}</span>`
-            : esc(r.athlete);
-          return `<div class="record-row">
-            <span class="record-move">${mn[m]}</span>
-            <span class="record-holder">${flagEmoji(r.country)}${holder}</span>
-            <span class="record-value">${r.class_inferred || r.estimated ? "~\u2009" : ""}${fmt(r.value)}<small>${m === "ris" ? "" : "kg"}</small></span>
-          </div>`;
+          const o = off[c + "|" + m];
+          const b = best[c + "|" + m];
+          if (!o && !b) return "";
+          let html = "";
+          if (o) {
+            html += recordRow(o, mn, m, "", null);
+            if (b && b.value > o.value) html += recordRow(b, mn, m, " record-best", t().rec_best);
+          } else {
+            html += recordRow(b, mn, m, " record-best", `${mn[m]} · ${t().rec_best}`);
+          }
+          return html;
         }).join("")}
       </div>
     </div>`).join("") || `<p class="empty-row">${t().no_data}</p>`;

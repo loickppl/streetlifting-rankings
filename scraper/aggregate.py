@@ -901,12 +901,22 @@ def main():
         })
     athletes.sort(key=lambda a: a["id"])
 
-    # Records computed from the OSL performance database:
-    # best mark per (gender, class, movement) and per (gender, 'all', movement).
+    # Records: two tiers.
+    #   official — world records proper: only marks set at INTERNATIONAL
+    #   events (Worlds/Euros/Asias/Americs, qualifiers excluded), topped up
+    #   by the list Final Rep publishes;
+    #   best — best validated mark at ANY official competition.
+    INTERNATIONAL_RE = re.compile(r"\b(worlds?|euros?|asias?|americs?)\b", re.I)
+
+    def is_international(comp):
+        return bool(comp and INTERNATIONAL_RE.search(comp) and "qualif" not in comp.lower())
+
     computed = {}
+    computed_int = {}
     for p in performances:
         if not p["gender"]:
             continue
+        international = is_international(p.get("competition"))
         for movement in MOVEMENTS + ["ris"]:
             value = p.get(movement)
             if not value:
@@ -915,41 +925,39 @@ def main():
                 if not klass:
                     continue
                 key = (p["gender"], klass, movement)
+                entry = {
+                    "gender": p["gender"], "class": klass, "movement": movement,
+                    "value": value, "athlete": p["athlete"], "athlete_id": p["athlete_id"],
+                    "country": p["country"], "competition": p["competition"],
+                    "date": p["date"], "bodyweight": p["bodyweight"],
+                    "class_inferred": True if (klass != "all" and p.get("class_inferred")) else None,
+                    "estimated": True if (movement == "ris" and p.get("ris_est")) else None,
+                }
                 if key not in computed or value > computed[key]["value"]:
-                    computed[key] = {
-                        "gender": p["gender"], "class": klass, "movement": movement,
-                        "value": value, "athlete": p["athlete"], "athlete_id": p["athlete_id"],
-                        "country": p["country"], "competition": p["competition"],
-                        "date": p["date"], "bodyweight": p["bodyweight"],
-                        "class_inferred": True if (klass != "all" and p.get("class_inferred")) else None,
-                        "estimated": True if (movement == "ris" and p.get("ris_est")) else None,
-                    }
+                    computed[key] = entry
+                if international and (key not in computed_int or value > computed_int[key]["value"]):
+                    computed_int[key] = entry
 
-    # ── unified records: one list, best mark whatever the source ──
-    # Candidates: the record computed from the consolidated database, and the
-    # official list published on final-rep.com (curated, sometimes older than
-    # our data, sometimes covering events we don't have).
-    unified = dict(computed)   # (gender, class, movement) -> record
+    # official tier = international marks topped up by the published list
+    official = dict(computed_int)
+    meta_by_name = {norm_name(m["name"]): m for m in athlete_meta.values() if m.get("name")}
     for r in (finalrep["records"] if finalrep else []):
         key = (r["gender"], r["class"], r["movement"])
-        cur = unified.get(key)
+        cur = official.get(key)
         if cur is None or r["weight_kg"] > cur["value"]:
-            unified[key] = {
+            m = meta_by_name.get(norm_name(r["athlete"]))
+            official[key] = {
                 "gender": r["gender"], "class": r["class"], "movement": r["movement"],
-                "value": r["weight_kg"], "athlete": r["athlete"], "athlete_id": None,
-                "country": None, "competition": None, "date": None, "bodyweight": None,
-                "instagram": r.get("instagram"),
+                "value": r["weight_kg"], "athlete": (m or {}).get("name") or r["athlete"],
+                "athlete_id": (m or {}).get("id"), "country": (m or {}).get("country"),
+                "competition": None, "date": None, "bodyweight": None,
             }
-    # attach instagram from the athlete DB when known
-    ig_by_name = {norm_name(m["name"]): m.get("instagram")
-                  for m in athlete_meta.values() if m.get("name")}
-    for rec in unified.values():
-        if not rec.get("instagram"):
-            rec["instagram"] = ig_by_name.get(norm_name(rec.get("athlete")))
 
     records = {
-        "unified": sorted(unified.values(),
-                          key=lambda r: (r["gender"], r["class"], r["movement"])),
+        "official": sorted(official.values(),
+                           key=lambda r: (r["gender"], r["class"], r["movement"])),
+        "best": sorted(computed.values(),
+                       key=lambda r: (r["gender"], r["class"], r["movement"])),
     }
 
     meta = {
@@ -1051,7 +1059,7 @@ def main():
     print("mirrored to docs/data/streetlifting.json")
 
     print(f"{len(athletes)} athletes, {len(performances)} performances, "
-          f"{len(records['unified'])} unified records")
+          f"{len(records['official'])} official WRs, {len(records['best'])} best marks")
 
 
 if __name__ == "__main__":
