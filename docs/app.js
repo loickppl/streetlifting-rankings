@@ -25,6 +25,7 @@ const I18N = {
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Historique des compétitions",
     rec_best: "Meilleure marque", rec_best_tip: "Meilleure performance validée toutes compétitions officielles — un record du monde ne peut être établi qu’en compétition internationale (Worlds, Euros, Asias, Americs)",
+    rec_note: "Un <strong>record du monde (WR)</strong> ne peut être établi qu’en compétition internationale (Worlds, Euros, Asias, Americs — hors qualifications). Quand une charge supérieure a été validée dans une autre compétition officielle, elle apparaît en dessous comme <strong>meilleure marque</strong> : reconnue, mais sans le statut de record du monde.",
     est_total: "Total estimé", est_total_tip: "Somme des 4 records all-time (jamais réalisé en une seule compétition)", total_tip: "Meilleur total réalisé en compétition",
     attempts_hint: "voir les tentatives", lifts_hint: "voir les charges",
     competitions_word: "compétitions",
@@ -54,6 +55,7 @@ const I18N = {
     ranking_title: (g, c, m) => `${m} — ${g} · ${c}`,
     history: "Competition history",
     rec_best: "Best mark", rec_best_tip: "Best validated mark at any official competition — world records can only be set at international events (Worlds, Euros, Asias, Americs)",
+    rec_note: "A <strong>world record (WR)</strong> can only be set at an international competition (Worlds, Euros, Asias, Americs — qualifiers excluded). When a heavier lift has been validated at another official competition, it appears below as a <strong>best mark</strong>: recognised, but without world-record status.",
     est_total: "Est. total", est_total_tip: "Sum of the 4 all-time PRs (never lifted in a single meet)", total_tip: "Best total achieved in competition",
     attempts_hint: "view attempts", lifts_hint: "view lifts",
     competitions_word: "competitions",
@@ -435,6 +437,11 @@ function renderRecords() {
   const grid = $("#records-grid");
   const mn = t().metric_names;
   const country = $("#r-country").value;
+
+  // the WR / best-mark distinction only applies to the world view
+  const note = $("#records-note");
+  note.innerHTML = t().rec_note;
+  note.classList.toggle("hidden", !!country);
 
   if (country) {
     const recs = nationalRecords(state.rGender, country);
