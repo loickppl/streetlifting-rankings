@@ -119,6 +119,7 @@
     <div class="section-head">
       <h2 class="section-title" id="rankings-title"></h2>
       <span class="section-count" id="rankings-count"></span>
+      <button class="share-btn" id="share-rankings" data-share="rankings"><svg class="share-ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="10.5" cy="2.8" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="3.5" cy="7" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="11.2" r="1.8" stroke="currentColor" stroke-width="1.4"/><path d="M5.1 6.2l3.8-2.4M5.1 7.8l3.8 2.4" stroke="currentColor" stroke-width="1.4"/></svg><span data-i18n="share">Partager</span></button>
     </div>
     <div class="table-card">
       <div class="table-scroll">
@@ -178,6 +179,22 @@
   </div>
 </div>
 
+<!-- Share (story image + native share sheet) -->
+<div id="share-modal" class="modal share-modal hidden" role="dialog" aria-modal="true">
+  <div class="share-box">
+    <div class="share-head">
+      <h2 data-i18n="share_title">Partager</h2>
+      <button class="share-close" id="share-close" aria-label="Close">✕</button>
+    </div>
+    <div class="share-preview" id="share-preview"><span class="share-loading" data-i18n="share_preparing">Préparation de l’image…</span></div>
+    <div class="share-actions">
+      <button class="btn-primary" id="share-do"><svg class="share-ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="10.5" cy="2.8" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="3.5" cy="7" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="11.2" r="1.8" stroke="currentColor" stroke-width="1.4"/><path d="M5.1 6.2l3.8-2.4M5.1 7.8l3.8 2.4" stroke="currentColor" stroke-width="1.4"/></svg><span data-i18n="share_do">Partager</span></button>
+      <button class="btn-secondary" id="share-copy"><span data-i18n="share_copy">Copier le lien</span></button>
+    </div>
+    <p class="share-hint" id="share-hint"></p>
+  </div>
+</div>
+
 <footer class="footer">
   <div class="hazard"></div>
   <div class="wrap footer-inner">
@@ -189,5 +206,6 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="share.js"></script>
 </body>
 </html>

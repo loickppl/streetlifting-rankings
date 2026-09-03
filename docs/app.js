@@ -33,6 +33,14 @@ const I18N = {
     footer_disc: "Seules les performances validées en compétition officielle 4 mouvements (muscle-up, traction, dips, squat) sont recensées. Projet communautaire non affilié — données agrégées automatiquement depuis des sources publiques.",
     updated: "Données du",
     metric_names: { total: "Total", ris: "RIS", muscle_up: "Muscle-up", pull_up: "Traction", dip: "Dips", squat: "Squat" },
+    share: "Partager", share_title: "Partager", share_do: "Partager", share_copy: "Copier le lien", share_copied: "Lien copié",
+    share_download: "Télécharger l’image", share_preparing: "Préparation de l’image…",
+    share_hint_native: "Le partage ouvre la feuille de partage du téléphone — Instagram Stories inclus.",
+    share_hint_fallback: "Télécharge l’image puis publie-la depuis ton téléphone (story, post…).",
+    share_world_ranking: "Classement mondial", share_national_ranking: "Classement", share_wr: "Records du monde",
+    share_national_records: "Records nationaux", share_athlete: "Fiche athlète", share_top: "Top",
+    share_pr: "Records personnels", share_last_comps: "Dernières compétitions", share_est_total: "Total estimé",
+    share_period: { "365": "12 derniers mois", "730": "24 derniers mois" }, share_since: "Du", share_until: "au",
   },
   en: {
     tab_rankings: "Rankings", tab_records: "Records", tab_athletes: "Athletes",
@@ -63,6 +71,14 @@ const I18N = {
     footer_disc: "Only lifts validated at official 4-movement competitions (muscle-up, pull-up, dip, squat) are recorded. Unaffiliated community project — data automatically aggregated from public sources.",
     updated: "Data from",
     metric_names: { total: "Total", ris: "RIS", muscle_up: "Muscle-up", pull_up: "Pull-up", dip: "Dip", squat: "Squat" },
+    share: "Share", share_title: "Share", share_do: "Share", share_copy: "Copy link", share_copied: "Link copied",
+    share_download: "Download image", share_preparing: "Preparing image…",
+    share_hint_native: "Sharing opens your phone’s share sheet — Instagram Stories included.",
+    share_hint_fallback: "Download the image, then post it from your phone (story, post…).",
+    share_world_ranking: "World ranking", share_national_ranking: "Ranking", share_wr: "World records",
+    share_national_records: "National records", share_athlete: "Athlete card", share_top: "Top",
+    share_pr: "Personal records", share_last_comps: "Latest competitions", share_est_total: "Est. total",
+    share_period: { "365": "Last 12 months", "730": "Last 24 months" }, share_since: "From", share_until: "to",
   },
 };
 
@@ -72,6 +88,7 @@ const state = {
   athletes: [],
   records: { official: [], best: [] },
   meta: null,
+  tab: "rankings",
   // rankings filters
   page: 1,
   aPage: 1,
@@ -86,6 +103,7 @@ const state = {
 };
 
 const $ = (s) => document.querySelector(s);
+const SHARE_ICON = '<svg class="share-ico" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="10.5" cy="2.8" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="3.5" cy="7" r="1.8" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="11.2" r="1.8" stroke="currentColor" stroke-width="1.4"/><path d="M5.1 6.2l3.8-2.4M5.1 7.8l3.8 2.4" stroke="currentColor" stroke-width="1.4"/></svg>';
 const t = () => I18N[state.lang];
 const compWord = (n) => n > 1 ? t().competitions_word : t().competitions_word.slice(0, -1);
 
@@ -348,6 +366,8 @@ function renderRankings() {
     t().metric_names[metric]);
   $("#rankings-count").textContent = `${scoped.length} / ${rows.length} ${t().results}`;
 
+  if (state.tab === "rankings") writeHash();
+
   const metricKey = { muscle_up: "col_mu", pull_up: "col_pu", dip: "col_dip", squat: "col_sq", total: "col_total", ris: "col_ris" }[metric];
   const cols = [
     ["col_rank", ""], ["col_athlete", ""],
@@ -438,6 +458,8 @@ function renderRecords() {
   const mn = t().metric_names;
   const country = $("#r-country").value;
 
+  if (state.tab === "records") writeHash();
+
   // the WR / best-mark distinction only applies to the world view
   const note = $("#records-note");
   note.innerHTML = t().rec_note;
@@ -449,7 +471,7 @@ function renderRecords() {
     recs.forEach(r => (byClass[r.class] ??= []).push(r));
     grid.innerHTML = Object.keys(byClass).sort(classSort).map(c => `
       <div class="record-card">
-        <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">${esc(country)}</span></div>
+        <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">${esc(country)}</span><button class="share-btn icon" data-share="records" data-class="${esc(c)}" title="${t().share}">${SHARE_ICON}</button></div>
         <div class="record-rows">
           ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
             const r = byClass[c].find(x => x.movement === m);
@@ -468,7 +490,7 @@ function renderRecords() {
 
   grid.innerHTML = classes.sort(classSort).map(c => `
     <div class="record-card">
-      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">WR</span></div>
+      <div class="record-card-head"><h3>${c === "all" ? t().all_classes : esc(c)}</h3><span class="tag">WR</span><button class="share-btn icon" data-share="records" data-class="${esc(c)}" title="${t().share}">${SHARE_ICON}</button></div>
       <div class="record-rows">
         ${["total", "ris", "muscle_up", "pull_up", "dip", "squat"].map(m => {
           const o = off[c + "|" + m];
@@ -557,6 +579,7 @@ function openAthlete(id) {
     <div class="athlete-head">
       <h2><span class="flag">${flagsOf(a)}</span> ${esc(a.name)}</h2>
       <div class="sub">${a.gender === "male" ? t().men : t().women} · ${a.n_competitions} ${compWord(a.n_competitions)}${links.length ? " · " + links.join(" · ") : ""}</div>
+      <button class="share-btn" data-share="athlete" data-id="${esc(a.id)}">${SHARE_ICON}<span>${t().share}</span></button>
     </div>
     <div class="athlete-body">
       <div class="bests">
@@ -628,11 +651,71 @@ function openAthlete(id) {
   $("#modal-close").style.transform = "";
 }
 
+/* ── URL state (tab + filters, so a link lands on the same view) ── */
+function setSeg(sel, value) {
+  $(sel).querySelectorAll(".seg-btn").forEach(b => b.classList.toggle("active", b.dataset.value === value));
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  if (state.tab === "rankings") {
+    if (state.gender !== "male") p.set("g", state.gender);
+    if (state.metric !== "total") p.set("m", state.metric);
+    if (state.klass) p.set("c", state.klass);
+    const period = $("#f-period").value;
+    if (period) p.set("p", period);
+    if (period === "custom") {
+      if ($("#f-from").value) p.set("from", $("#f-from").value);
+      if ($("#f-to").value) p.set("to", $("#f-to").value);
+    }
+    if ($("#f-top").value !== "30") p.set("top", $("#f-top").value);
+    if ($("#f-country").value) p.set("country", $("#f-country").value);
+    if ($("#f-search").value.trim()) p.set("q", $("#f-search").value.trim());
+  } else if (state.tab === "records") {
+    if (state.rGender !== "male") p.set("g", state.rGender);
+    if ($("#r-country").value) p.set("country", $("#r-country").value);
+  }
+  const qs = p.toString();
+  const hash = state.tab === "rankings" && !qs ? "" : `#${state.tab}${qs ? "?" + qs : ""}`;
+  history.replaceState(null, "", hash || location.pathname);
+}
+function readHash() {
+  const raw = location.hash.slice(1);
+  if (!raw || raw.startsWith("a=")) return;
+  const [tab, qs] = raw.split("?");
+  if (!["rankings", "records", "athletes"].includes(tab)) return;
+  const p = new URLSearchParams(qs || "");
+  const has = (sel, v) => [...$(sel).options].some(o => o.value === v);
+  if (tab === "rankings") {
+    const g = p.get("g"); if (g === "male" || g === "female") { state.gender = g; setSeg("#f-gender", g); }
+    const m = p.get("m");
+    if (m && $(`#f-metric .pill[data-value="${m}"]`)) {
+      state.metric = m;
+      $("#f-metric").querySelectorAll(".pill").forEach(b => b.classList.toggle("active", b.dataset.value === m));
+    }
+    if (p.get("c")) state.klass = p.get("c");
+    if (p.get("p") && has("#f-period", p.get("p"))) {
+      $("#f-period").value = p.get("p");
+      const custom = p.get("p") === "custom";
+      $("#date-from-wrap").classList.toggle("hidden", !custom);
+      $("#date-to-wrap").classList.toggle("hidden", !custom);
+      if (custom) { $("#f-from").value = p.get("from") || ""; $("#f-to").value = p.get("to") || ""; }
+    }
+    if (p.get("top") && has("#f-top", p.get("top"))) $("#f-top").value = p.get("top");
+    if (p.get("country") && has("#f-country", p.get("country"))) $("#f-country").value = p.get("country");
+    if (p.get("q")) $("#f-search").value = p.get("q");
+  } else if (tab === "records") {
+    const g = p.get("g"); if (g === "male" || g === "female") { state.rGender = g; setSeg("#r-gender", g); }
+    if (p.get("country") && has("#r-country", p.get("country"))) $("#r-country").value = p.get("country");
+  }
+  setTab(tab, false);
+}
+
 /* ── events ───────────────────────────────────────────────── */
 function setTab(tab, pushHash) {
+  state.tab = tab;
   document.querySelectorAll(".nav-link").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".panel").forEach(p => p.classList.toggle("active", p.id === `panel-${tab}`));
-  if (pushHash) history.replaceState(null, "", tab === "rankings" ? location.pathname : `#${tab}`);
+  if (pushHash) writeHash();
 }
 
 function segBind(sel, onChange) {
@@ -651,7 +734,9 @@ function bind() {
     setTab(btn.dataset.tab, true);
   });
   window.addEventListener("hashchange", () => {
-    const tab = location.hash.slice(1);
+    const am = location.hash.match(/^#a=(.+)$/);
+    if (am) { openAthlete(decodeURIComponent(am[1])); return; }
+    const tab = location.hash.slice(1).split("?")[0];
     if (["rankings", "records", "athletes"].includes(tab)) setTab(tab, false);
   });
   $("#brand").addEventListener("click", (e) => e.preventDefault());
@@ -734,7 +819,9 @@ function bind() {
   $(".modal-box").addEventListener("scroll", () => {
     $("#modal-close").style.transform = `translateY(${$(".modal-box").scrollTop}px)`;
   }, { passive: true });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("#share-modal").classList.contains("hidden")) closeModal();
+  });
 }
 
 /* ── init ─────────────────────────────────────────────────── */
@@ -745,21 +832,22 @@ function bind() {
   } catch {}
   bind();
   applyI18n();
-  const tab = location.hash.slice(1);
+  const tab = location.hash.slice(1).split("?")[0];
   if (["records", "athletes"].includes(tab)) setTab(tab, false);
   try {
     await loadData();
-    const am = location.hash.match(/^#a=(.+)$/);
-    if (am) openAthlete(decodeURIComponent(am[1]));
   } catch (err) {
     $("#rankings-table").innerHTML =
       `<tbody><tr><td class="empty-row">Data not available (${esc(err.message || err)})</td></tr></tbody>`;
     return;
   }
   applyI18n();
-  refreshClassChips();
   refreshCountryOptions();
+  readHash();
+  refreshClassChips();
   renderRankings();
   renderRecords();
   renderAthletes();
+  const am = location.hash.match(/^#a=(.+)$/);
+  if (am) openAthlete(decodeURIComponent(am[1]));
 })();
