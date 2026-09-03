@@ -133,12 +133,28 @@ function classTitle(c) {
 function countryNames(list) { return (list || []).map(countryLabel).join(" · "); }
 
 /* ── cards ───────────────────────────────────────────────────── */
+const SHARE_MAX_ROWS = 12;
+function shareRange(total) {
+  // rank window picked in the modal, clamped to the ranking and to what fits
+  let from = Math.max(1, parseInt($("#share-from").value, 10) || 1);
+  let to = parseInt($("#share-to").value, 10) || from + 9;
+  from = Math.min(from, Math.max(1, total));
+  if (to < from) to = from + 9;              // start moved past the end: keep a 10-row window
+  to = Math.min(to, total, from + SHARE_MAX_ROWS - 1);
+  $("#share-from").value = from; $("#share-to").value = to;
+  $("#share-from").max = total; $("#share-to").max = total;
+  $("#share-range-max").textContent = `${t().share_of} ${total}`;
+  return [from, to];
+}
+
 async function drawRankingCard(ctx) {
   const { gender, metric, klass } = state;
   const country = $("#f-country").value;
   const period = $("#f-period").value;
   const q = $("#f-search").value.trim();
-  const rows = rankingRows().filter(r => !r._dq).slice(0, 10);
+  const all = rankingRows().filter(r => !r._dq);
+  const [from, to] = shareRange(all.length);
+  const rows = all.slice(from - 1, to);
   const unit = metric === "ris" ? "" : "kg";
 
   let periodTxt = t().p_all;
@@ -148,7 +164,8 @@ async function drawRankingCard(ctx) {
   } else if (period) periodTxt = t().share_period[period] || periodTxt;
 
   const kicker = `${country ? `${t().share_national_ranking} · ${countryLabel(country)}` : t().share_world_ranking} · ${genderLabel(gender)}`;
-  const sub = [classTitle(klass), periodTxt, `${t().share_top} ${rows.length}`, q ? `“${q}”` : ""].filter(Boolean).join(" · ");
+  const rangeTxt = from === 1 ? `${t().share_top} ${rows.length}` : t().share_range(from, to);
+  const sub = [classTitle(klass), periodTxt, rangeTxt, q ? `“${q}”` : ""].filter(Boolean).join(" · ");
   const top = drawFrame(ctx, { kicker, title: t().metric_names[metric], sub });
 
   const flags = await Promise.all(rows.map(r => loadFlag((r.countries || [r.country])[0])));
@@ -162,11 +179,12 @@ async function drawRankingCard(ctx) {
     const y0 = top + i * rh;
     hairline(ctx, 80, CW - 80, y0 + rh - 2);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-    setFont(ctx, 800, 38, i === 0 ? PAL.ink : PAL.ink3, -1);
-    ctx.fillText(String(i + 1), 80, y0 + 66);
+    const rank = from + i;
+    setFont(ctx, 800, rank >= 100 ? 30 : 38, rank === 1 ? PAL.ink : PAL.ink3, -1);
+    ctx.fillText(String(rank), 80, y0 + 66);
     drawFlag(ctx, flags[i], (r.countries || [r.country])[0], 158, y0 + 34, 52, 39);
     const pre = (metric === "ris" && r.ris_est) ? "~" : "";
-    const left = drawValue(ctx, pre + fmt(r[metric]), unit, CW - 80, y0 + 70, 50, i === 0 ? PAL.accent : PAL.ink);
+    const left = drawValue(ctx, pre + fmt(r[metric]), unit, CW - 80, y0 + 70, 50, rank === 1 ? PAL.accent : PAL.ink);
     const nameMax = left - 236 - 36;
     ctx.textAlign = "left";
     setFont(ctx, 700, 38, PAL.ink, -.5);
@@ -277,17 +295,26 @@ async function drawAthleteCard(ctx, id) {
 
 /* ── share modal ─────────────────────────────────────────────── */
 let shareFile = null, shareLink = "", shareCanNative = false, shareLockedBody = false;
+let shareKind = null, shareOpts = {}, shareSeq = 0;
 
 function shareBaseUrl() { return `${location.origin}${location.pathname}`; }
 
 async function openShare(kind, opts = {}) {
-  const modal = $("#share-modal"), preview = $("#share-preview");
+  shareKind = kind; shareOpts = opts;
+  $("#share-copy").querySelector("span").textContent = t().share_copy;
+  $("#share-range").classList.toggle("hidden", kind !== "rankings");
+  if (kind === "rankings") { $("#share-from").value = 1; $("#share-to").value = 10; }
+  $("#share-modal").classList.remove("hidden");
+  if (!document.body.classList.contains("modal-open")) { lockBody(); shareLockedBody = true; }
+  await renderShareCard();
+}
+
+async function renderShareCard() {
+  const kind = shareKind, opts = shareOpts, seq = ++shareSeq;
+  const preview = $("#share-preview");
   preview.innerHTML = `<span class="share-loading">${t().share_preparing}</span>`;
   $("#share-do").disabled = true;
-  $("#share-copy").querySelector("span").textContent = t().share_copy;
   $("#share-hint").textContent = "";
-  modal.classList.remove("hidden");
-  if (!document.body.classList.contains("modal-open")) { lockBody(); shareLockedBody = true; }
 
   try {
     await ensureCanvasFonts();
@@ -299,15 +326,17 @@ async function openShare(kind, opts = {}) {
     else if (kind === "records") { await drawRecordsCard(ctx, opts.klass); shareLink = location.href; slug = `records-${state.rGender}-${opts.klass}`; }
     else if (kind === "athlete") { await drawAthleteCard(ctx, opts.id); shareLink = `${shareBaseUrl()}#a=${encodeURIComponent(opts.id)}`; slug = opts.id; }
 
+    if (seq !== shareSeq) return; // a newer render superseded this one
     preview.innerHTML = `<img alt="" src="${canvas.toDataURL("image/png")}">`;
     const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+    if (seq !== shareSeq) return;
     shareFile = new File([blob], `streetlifting-${slug}.png`.replace(/[^a-z0-9.\-_]/gi, "-"), { type: "image/png" });
     shareCanNative = !!(navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] }));
     $("#share-do").querySelector("span").textContent = shareCanNative ? t().share_do : t().share_download;
     $("#share-hint").textContent = shareCanNative ? t().share_hint_native : t().share_hint_fallback;
     $("#share-do").disabled = false;
   } catch (err) {
-    preview.innerHTML = `<span class="share-loading">${esc(err.message || String(err))}</span>`;
+    if (seq === shareSeq) preview.innerHTML = `<span class="share-loading">${esc(err.message || String(err))}</span>`;
   }
 }
 
@@ -349,6 +378,12 @@ $("#share-modal").addEventListener("click", (e) => {
   if (e.target === $("#share-modal") || e.target.closest("#share-close")) closeShare();
 });
 $("#share-do").addEventListener("click", doShare);
+let shareRangeTimer = null;
+["#share-from", "#share-to"].forEach(sel => $(sel).addEventListener("input", () => {
+  clearTimeout(shareRangeTimer);
+  shareRangeTimer = setTimeout(renderShareCard, 350);
+}));
+
 $("#share-copy").addEventListener("click", copyShareLink);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !$("#share-modal").classList.contains("hidden")) closeShare();

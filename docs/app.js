@@ -41,6 +41,7 @@ const I18N = {
     share_national_records: "Records nationaux", share_athlete: "Fiche athlète", share_top: "Top",
     share_pr: "Records personnels", share_last_comps: "Dernières compétitions", share_est_total: "Total estimé",
     share_period: { "365": "12 derniers mois", "730": "24 derniers mois" }, share_since: "Du", share_until: "au",
+    share_places: "Places", share_range: (a, b) => `Places ${a}–${b}`, share_of: "sur",
   },
   en: {
     tab_rankings: "Rankings", tab_records: "Records", tab_athletes: "Athletes",
@@ -79,6 +80,7 @@ const I18N = {
     share_national_records: "National records", share_athlete: "Athlete card", share_top: "Top",
     share_pr: "Personal records", share_last_comps: "Latest competitions", share_est_total: "Est. total",
     share_period: { "365": "Last 12 months", "730": "Last 24 months" }, share_since: "From", share_until: "to",
+    share_places: "Ranks", share_range: (a, b) => `Ranks ${a}–${b}`, share_of: "of",
   },
 };
 
