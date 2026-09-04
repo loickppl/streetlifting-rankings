@@ -668,15 +668,18 @@ body.modal-open {
   border-radius: var(--r-md); width: 32px; height: 32px; cursor: pointer; font-size: 13px; line-height: 1;
 }
 .share-close:hover { border-color: var(--ink); color: var(--ink); }
+/* The frame owns the size: a 9:16 box that shrinks with the modal on short
+   screens; the image fills it with object-fit so it can never overflow. */
 .share-preview {
-  display: flex; align-items: center; justify-content: center;
+  position: relative; display: flex; align-items: center; justify-content: center;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
-  min-height: 240px; padding: 12px;
+  width: 100%; aspect-ratio: 9 / 16; max-height: 60vh;
+  flex: 1 1 auto; min-height: 240px;
 }
 .share-preview img {
-  display: block; max-width: 100%; max-height: 56vh; height: auto;
-  border: 1px solid var(--border); border-radius: var(--r-sm);
-  box-shadow: 0 6px 24px rgba(23, 23, 23, .12);
+  position: absolute; inset: 12px; width: calc(100% - 24px); height: calc(100% - 24px);
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(23, 23, 23, .14));
 }
 .share-loading { color: var(--ink-3); font-size: 13px; font-weight: 500; }
 .share-actions { display: flex; flex-direction: column; gap: 8px; }
