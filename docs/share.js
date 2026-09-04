@@ -133,13 +133,13 @@ function classTitle(c) {
 function countryNames(list) { return (list || []).map(countryLabel).join(" · "); }
 
 /* ── cards ───────────────────────────────────────────────────── */
-const SHARE_MAX_ROWS = 12;
+const SHARE_MAX_ROWS = 10;
 function shareRange(total) {
   // rank window picked in the modal, clamped to the ranking and to what fits
   let from = Math.max(1, parseInt($("#share-from").value, 10) || 1);
-  let to = parseInt($("#share-to").value, 10) || from + 9;
+  let to = parseInt($("#share-to").value, 10) || from + SHARE_MAX_ROWS - 1;
   from = Math.min(from, Math.max(1, total));
-  if (to < from) to = from + 9;              // start moved past the end: keep a 10-row window
+  if (to < from) to = from + SHARE_MAX_ROWS - 1;  // start moved past the end: keep a full window
   to = Math.min(to, total, from + SHARE_MAX_ROWS - 1);
   $("#share-from").value = from; $("#share-to").value = to;
   $("#share-from").max = total; $("#share-to").max = total;
@@ -175,23 +175,25 @@ async function drawRankingCard(ctx) {
     ctx.fillText(t().no_data, CW / 2, top + 120); ctx.textAlign = "left";
     return;
   }
+  // vertical offsets scale with the row height so a shorter row never spills into the next
+  const k = rh / 116;
   rows.forEach((r, i) => {
     const y0 = top + i * rh;
     hairline(ctx, 80, CW - 80, y0 + rh - 2);
     ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
     const rank = from + i;
     setFont(ctx, 800, rank >= 100 ? 30 : 38, rank === 1 ? PAL.ink : PAL.ink3, -1);
-    ctx.fillText(String(rank), 80, y0 + 66);
-    drawFlag(ctx, flags[i], (r.countries || [r.country])[0], 158, y0 + 34, 52, 39);
+    ctx.fillText(String(rank), 80, y0 + 66 * k);
+    drawFlag(ctx, flags[i], (r.countries || [r.country])[0], 158, y0 + 34 * k, 52, 39);
     const pre = (metric === "ris" && r.ris_est) ? "~" : "";
-    const left = drawValue(ctx, pre + fmt(r[metric]), unit, CW - 80, y0 + 70, 50, rank === 1 ? PAL.accent : PAL.ink);
+    const left = drawValue(ctx, pre + fmt(r[metric]), unit, CW - 80, y0 + 70 * k, 50, rank === 1 ? PAL.accent : PAL.ink);
     const nameMax = left - 236 - 36;
     ctx.textAlign = "left";
     setFont(ctx, 700, 38, PAL.ink, -.5);
-    ctx.fillText(truncate(ctx, r.athlete, nameMax), 236, y0 + 58);
+    ctx.fillText(truncate(ctx, r.athlete, nameMax), 236, y0 + 58 * k);
     setFont(ctx, 500, 23, PAL.ink3);
     const meta = [!klass && r.class ? `${r.class_inferred ? "~\u2009" : ""}${r.class}` : "", r.competition, fmtDate(r.date)].filter(Boolean).join(" · ");
-    ctx.fillText(truncate(ctx, meta, CW - 80 - 236), 236, y0 + 94);
+    ctx.fillText(truncate(ctx, meta, CW - 80 - 236), 236, y0 + 94 * k);
   });
 }
 
